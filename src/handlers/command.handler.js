@@ -17,25 +17,17 @@ const { getMatchDaySummary, getLeagueTable, getLeagueUpcomingMatches } = require
 // --- Importaciones de Manejadores (Handlers) ---
 const { handlePing } = require('./system.handler');
 const { handleFeriados, handleFarmacias, handleClima, handleSismos, handleBus, handleSec, handleMenu } = require('./utility.handler');
-const { handleSticker, handleSound, getSoundCommands, handleAudioList, handleJoke, handleCountdown, handleBotMention, handleOnce } = require('./fun.handler');
-const { handleWikiSearch, handleNews, handleGoogleSearch } = require('./search.handler'); // Corregido: handleGoogleSearch no estaba en tu lista original pero sí en el switch
+const { handleSticker, handleCountdown } = require('./fun.handler');
+const { handleWikiSearch, handleNews, handleGoogleSearch } = require('./search.handler');
 const { handleTicket, handleCaso } = require('./stateful.handler');
 const { handleAiHelp } = require('./ai.handler');
-const { handlePhoneSearch, handleTneSearch, handlePatenteSearch } = require('./personalsearch.handler');
+const { handlePhoneSearch, handlePatenteSearch } = require('./personalsearch.handler');
 
 // --- Lógica Principal ---
-const soundCommands = getSoundCommands();
 const countdownCommands = ['18', 'navidad', 'añonuevo'];
 
 async function commandHandler(client, message) {
     const rawText = message.body.toLowerCase().trim();
-    
-    if (/\b(bot|boot|bott|bbot)\b/.test(rawText)) {
-        return handleBotMention(client, message);
-    }
-    if (/\b(once|onse|11)\b/.test(rawText)) {
-        return handleOnce(client, message);
-    }
 
     if (!rawText.startsWith('!') && !rawText.startsWith('/')) {
         return;
@@ -46,20 +38,17 @@ async function commandHandler(client, message) {
 
     console.log(`(Handler) -> Comando recibido: "${command}"`);
 
-    if (soundCommands.includes(command)) {
-        return handleSound(client, message, command);
-    }
     if (countdownCommands.includes(command)) {
         replyMessage = handleCountdown(command);
         return message.reply(replyMessage);
     }
 
     switch (command) {
-case 'tabla':
+        case 'tabla':
         case 'ligatabla':
-            messagingService.sendLoadingMessage(message); // Envía "cargando..."
-            const table = await getLeagueTable();        // Espera el resultado
-            client.sendMessage(message.from, table);     // Envía el resultado final
+            messagingService.sendLoadingMessage(message);
+            const table = await getLeagueTable();
+            client.sendMessage(message.from, table);
             break;
         case 'prox':
         case 'ligapartidos':
@@ -122,13 +111,10 @@ case 'tabla':
         case 'g': replyMessage = await handleGoogleSearch(message); break;
         case 'pat': case 'patente': return handlePatenteSearch(message);
         case 's': return handleSticker(client, message);
-        case 'audios': case 'sonidos': replyMessage = handleAudioList(); break;
-        case 'chiste': return handleJoke(client, message);
         case 'ticket': case 'ticketr': case 'tickete': replyMessage = handleTicket(message); break;
         case 'caso': case 'ecaso': case 'icaso': replyMessage = await handleCaso(message); break;
         case 'ayuda': replyMessage = await handleAiHelp(message); break;
         case 'num': case 'tel': return handlePhoneSearch(client, message);
-        case 'tne': case 'pase': return handleTneSearch(message);
         case 'id':
             console.log('ID de este chat:', message.from);
             message.reply(`ℹ️ El ID de este chat es:\n${message.from}`);

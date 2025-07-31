@@ -218,10 +218,6 @@ function handleMenu() {
     
 🤖 *Crear Sticker*
    Responde \`!s\` a una imagen/gif/video
-    
-🎵 *Audios*
-   \`!audios\` o \`!sonidos\` para la lista
-    
 🌋 *Info Geográfica*
    \`!sismos\`
    \`!bus [código_paradero]\`
