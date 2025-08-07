@@ -18,7 +18,6 @@ const { handlePing } = require('./system.handler');
 const { handleFeriados, handleFarmacias, handleClima, handleSismos, handleBus, handleSec, handleMenu } = require('./utility.handler');
 const { handleSticker, handleCountdown } = require('./fun.handler');
 const { handleWikiSearch, handleNews, handleGoogleSearch } = require('./search.handler');
-const { handleTicket, handleCaso } = require('./stateful.handler');
 const { handleAiHelp } = require('./ai.handler');
 const { handlePhoneSearch, handlePatenteSearch } = require('./personalsearch.handler');
 
