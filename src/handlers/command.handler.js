@@ -7,7 +7,6 @@ const { MessageMedia } = require('whatsapp-web.js');
 const metroService = require('../services/metro.service');
 const nationalTeamService = require('../services/nationalTeam.service');
 const economyService = require('../services/economy.service');
-const horoscopeService = require('../services/horoscope.service');
 const externalService = require('../services/external.service');
 const messagingService = require('../services/messaging.service.js');
 
