@@ -72,20 +72,7 @@ async function commandHandler(client, message) {
         case 'tclasi': case 'selecciontabla': replyMessage = await nationalTeamService.getQualifiersTable(); break;
         case 'clasi': case 'seleccionpartidos': replyMessage = await nationalTeamService.getQualifiersMatches(); break;
         case 'valores': replyMessage = await economyService.getEconomicIndicators(); break;
-        case 'horoscopo':
-            const signo = message.body.split(' ')[1];
-            if (!signo) {
-                replyMessage = "Por favor, escribe un signo. Ej: `!horoscopo aries`";
-            } else {
-                const horoscopeResult = await horoscopeService.getHoroscope(signo);
-                await message.reply(horoscopeResult.text);
-                if (horoscopeResult.imagePath) {
-                    const media = MessageMedia.fromFilePath(horoscopeResult.imagePath);
-                    await client.sendMessage(message.from, media);
-                }
-            }
-            return;
-        
+
         case 'bencina':
             const comuna = message.body.split(' ')[1];
             replyMessage = await externalService.getBencinaData(comuna);
