@@ -27,7 +27,7 @@ LIGAS = {
 
 # Lista de equipos chilenos para filtrar en competencias internacionales
 EQUIPOS_CHILENOS = [
-    "Universidad de Chile", "Colo-Colo", "Universidad Católica", "Palestino",
+    "Universidad de Chile", "Colo-Colo", "Palestino",
     "Unión Española", "Audax Italiano", "Huachipato", "Everton", "Coquimbo Unido",
     "Cobresal", "O'Higgins"
 ]
