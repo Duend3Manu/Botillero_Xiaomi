@@ -1,4 +1,3 @@
-// src/services/external.service.js
 "use strict";
 
 const pythonService = require('./python.service');
@@ -9,7 +8,8 @@ async function getBencinaData(comuna) {
     }
     try {
         console.log(`(Servicio Externo) -> Ejecutando bencina.py para ${comuna}...`);
-        const bencinaData = await pythonService.executeScript('bencina.py', [comuna]);
+        // RUTA CORREGIDA: Se especifica la carpeta donde está el script.
+        const bencinaData = await pythonService.executeScript('scripts/python/bencina.py', [comuna]);
         return bencinaData;
     } catch (error) {
         console.error("Error en getBencinaData:", error.message);
@@ -20,7 +20,8 @@ async function getBencinaData(comuna) {
 async function getTraductorStatus() {
     try {
         console.log(`(Servicio Externo) -> Ejecutando transbank.py...`);
-        const statusData = await pythonService.executeScript('transbank.py');
+        // RUTA CORREGIDA
+        const statusData = await pythonService.executeScript('scripts/python/transbank.py');
         return statusData;
     } catch (error) {
         console.error("Error en getTraductorStatus:", error.message);
@@ -31,7 +32,8 @@ async function getTraductorStatus() {
 async function getBolsaData() {
     try {
         console.log(`(Servicio Externo) -> Ejecutando bolsa.py...`);
-        const bolsaData = await pythonService.executeScript('bolsa.py');
+        // RUTA CORREGIDA
+        const bolsaData = await pythonService.executeScript('scripts/python/bolsa.py');
         return bolsaData;
     } catch (error) {
         console.error("Error en getBolsaData:", error.message);
