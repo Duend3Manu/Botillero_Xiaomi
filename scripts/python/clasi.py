@@ -62,7 +62,7 @@ def imprimir_jornada(jornada, fecha_jornada):
 
 # URL y fechas a buscar
 urlas = 'https://chile.as.com/resultados/futbol/clasificacion_mundial_sudamerica/calendario/?omnil=mpal'
-fechas_buscadas = ['09 Sept.']
+fechas_buscadas = ['04 Sept.']
 
 # Ejecuta la función principal
 obtener_datos_jornada(urlas, fechas_buscadas)
