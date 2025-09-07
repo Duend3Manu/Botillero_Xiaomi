@@ -45,7 +45,6 @@ const menuConfig = {
     ],
     "OTROS 🤖": [
         { cmd: "!ayuda <pregunta>", desc: "Pregúntale a la IA 🧠" },
-        { cmd: "!ticket", desc: "Crea un ticket de soporte 🎟️" },
         { cmd: "!id", desc: "Muestra el ID del chat 🆔" }
     ]
 };

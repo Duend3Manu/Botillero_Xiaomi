@@ -120,7 +120,5 @@ function handleCountdown(command) {
 module.exports = {
     handleSticker,
     handleStickerToMedia,
-    getSoundCommands,
-    handleJoke,
     handleCountdown,
 };

@@ -19,15 +19,13 @@ const utilityService = require('../services/utility.service.js');
 // --- Importaciones de Manejadores (Handlers) ---
 const { handlePing } = require('./system.handler');
 const { handleFeriados, handleFarmacias, handleClima, handleSismos, handleBus, handleSec, handleMenu } = require('./utility.handler');
-const { handleSticker, handleStickerToMedia, handleSound, getSoundCommands, handleAudioList, handleJoke, handleCountdown, handleBotMention, handleOnce, handleRuleta, handlePuntos } = require('./fun.handler');
+const { handleSticker, handleStickerToMedia, handleCountdown } = require('./fun.handler');
 const { handleWikiSearch, handleNews, handleGoogleSearch } = require('./search.handler');
-const { handleTicket, handleCaso } = require('./stateful.handler');
 const { handleAiHelp } = require('./ai.handler');
 const { handlePhoneSearch, handleTneSearch, handlePatenteSearch } = require('./personalsearch.handler'); // Eliminado handleRutSearch
 const { handleNetworkQuery, handleNicClSearch } = require('./network.handler');
 
 // --- Utilidades ---
-const soundCommands = getSoundCommands();
 const countdownCommands = ['18', 'navidad', 'añonuevo'];
 
 // Esta función ahora es interna y se usa de forma diferente
@@ -72,21 +70,18 @@ async function commandHandler(client, message) {
 
         console.log(`(Handler) -> Comando detectado: "${command}" en el texto: "${message.body}"`);
 
-        // --- Comandos de sonido y countdown ---
-        if (soundCommands.includes(command)) {
+        // --- Comandos de countdown ---
             // NUEVA LÓGICA DE REACCIÓN CONTEXTUAL
             let reactionTarget = message; // Por defecto, reacciona al propio comando
             if (message.hasQuotedMsg) {
                 // Si es una respuesta, el objetivo de la reacción es el mensaje citado
                 reactionTarget = await message.getQuotedMessage();
             }
-            // Se le pasa el mensaje del comando para la respuesta y el mensaje objetivo para la reacción
-            return handleSound(client, message, reactionTarget, command);
-        }
-        if (countdownCommands.includes(command)) {
-            replyMessage = handleCountdown(command);
-            return message.reply(replyMessage);
-        }
+
+            if (countdownCommands.includes(command)) {
+                replyMessage = handleCountdown(command);
+                return message.reply(replyMessage);
+            }
 
         // El switch ahora opera con el comando extraído
         // Y le pasamos el "modifiedMessage" a los handlers que leen argumentos
@@ -173,15 +168,11 @@ async function commandHandler(client, message) {
             case 's': return handleSticker(client, message);
             case 'toimg': case 'imagen': return handleStickerToMedia(client, message);
             case 'chiste': return handleJoke(client, message);
-            case 'ticket': case 'ticketr': case 'tickete': replyMessage = handleTicket(modifiedMessage); break;
-            case 'caso': case 'ecaso': case 'icaso': replyMessage = await handleCaso(modifiedMessage); break;
             case 'ayuda': replyMessage = await handleAiHelp(modifiedMessage); break;
             case 'num': case 'tel': return handlePhoneSearch(client, modifiedMessage);
             case 'id':
                 message.reply(`ℹ️ El ID de este chat es:\n${message.from}`);
                 return;
-            case 'ruleta': return handleRuleta(client, message);
-            case 'puntos': case 'score': return handlePuntos(client, message);
 
             case 'net':
             case 'whois': {

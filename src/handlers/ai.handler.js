@@ -17,8 +17,6 @@ const commandKnowledgeBase = [
     { keywords: ['micro', 'paradero', 'bus'], command: '!bus [código]' },
     { keywords: ['luz', 'corte', 'sec'], command: '!sec [región]' },
     { keywords: ['ping', 'estado', 'sistema'], command: '!ping' },
-    { keywords: ['ticket', 'tarea', 'recordatorio'], command: '!ticket' },
-    { keywords: ['caso', 'aislado', 'incidente'], command: '!caso' },
     { keywords: ['ayuda', 'comando', 'menu'], command: '!menu' }
 ];
 
