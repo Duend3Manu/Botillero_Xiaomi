@@ -7,7 +7,6 @@ const fs = require('fs');
 const metroService = require('../services/metro.service');
 const nationalTeamService = require('../services/nationalTeam.service');
 const economyService = require('../services/economy.service');
-const horoscopeService = require('../services/horoscope.service');
 const externalService = require('../services/external.service');
 const messagingService = require('../services/messaging.service.js');
 const { getMatchDaySummary, getLeagueTable, getLeagueUpcomingMatches } = require('../services/league.service.js');
@@ -146,20 +145,6 @@ async function commandHandler(client, message) {
             case 'valores':
                 replyMessage = await economyService.getEconomicIndicators();
                 break;
-            case 'horoscopo': {
-                const signo = getArgs(modifiedMessage.body)[0];
-                if (!signo) {
-                    replyMessage = "Por favor, escribe un signo. Ej: `!horoscopo aries`";
-                } else {
-                    const horoscopeResult = await horoscopeService.getHoroscope(signo);
-                    await message.reply(horoscopeResult.text);
-                    if (horoscopeResult.imagePath) {
-                        const media = MessageMedia.fromFilePath(horoscopeResult.imagePath);
-                        await client.sendMessage(message.from, media);
-                    }
-                }
-                return;
-            }
             case 'bencina': {
                 const comuna = getArgs(modifiedMessage.body)[0];
                 replyMessage = await externalService.getBencinaData(comuna);
@@ -187,7 +172,6 @@ async function commandHandler(client, message) {
             // case 'rut': case 'nombre': return handleRutSearch(modifiedMessage); // Eliminado
             case 's': return handleSticker(client, message);
             case 'toimg': case 'imagen': return handleStickerToMedia(client, message);
-            case 'audios': case 'sonidos': replyMessage = handleAudioList(); break;
             case 'chiste': return handleJoke(client, message);
             case 'ticket': case 'ticketr': case 'tickete': replyMessage = handleTicket(modifiedMessage); break;
             case 'caso': case 'ecaso': case 'icaso': replyMessage = await handleCaso(modifiedMessage); break;

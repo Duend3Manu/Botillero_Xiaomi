@@ -20,7 +20,6 @@ const menuConfig = {
         { cmd: "!sec", desc: "Reclamos por cortes de luz 💡" },
         { cmd: "!valores", desc: "Indicadores económicos 💸" },
         { cmd: "!bencina <comuna>", desc: "Bencineras más baratas ⛽" },
-        { cmd: "!horoscopo <signo>", desc: "Tu horóscopo diario 🔮" },
         { cmd: "!trstatus", desc: "Estado del traductor de DeepL 🌐" },
         { cmd: "!bolsa", desc: "Estado de la bolsa de Santiago 📈" }
     ],
@@ -40,19 +39,13 @@ const menuConfig = {
         { cmd: "!s", desc: "Crea un sticker (respondiendo a imagen/video) 🖼️" },
         { cmd: "!toimg", desc: "Convierte un sticker a imagen/gif �️" },
         { cmd: "!chiste", desc: "Te cuento un chiste en audio 😂" },
-        { cmd: "!audios", desc: "Lista de comandos de audio 🎵" },
         { cmd: "!banner <estilo> <texto>", desc: "Crea un banner ✨" },
         { cmd: "!texto <arriba> - <abajo>", desc: "Añade texto a una imagen ✍️" },
         { cmd: "!18, !navidad, !añonuevo", desc: "Cuenta regresiva ⏳" }
     ],
-    "JUEGOS 🎲": [
-        { cmd: "!nada", desc: "Gira la nada y gana puntos 🎰" },
-        { cmd: "!puntos", desc: "Muestra tus puntos acumulados 🏆" }
-    ],
     "OTROS 🤖": [
         { cmd: "!ayuda <pregunta>", desc: "Pregúntale a la IA 🧠" },
         { cmd: "!ticket", desc: "Crea un ticket de soporte 🎟️" },
-        { cmd: "!caso <número>", desc: "Revisa el estado de un ticket 🎫" },
         { cmd: "!id", desc: "Muestra el ID del chat 🆔" }
     ]
 };

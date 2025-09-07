@@ -13,7 +13,6 @@ const commandKnowledgeBase = [
     { keywords: ['metro', 'subterraneo'], command: '!metro' },
     { keywords: ['patente', 'auto', 'vehiculo'], command: '!pat [patente]' },
     { keywords: ['sticker', 'stiker', 's'], command: '!s' },
-    { keywords: ['audio', 'sonido', 'ruido'], command: '!audios' },
     { keywords: ['sismo', 'temblor'], command: '!sismos' },
     { keywords: ['micro', 'paradero', 'bus'], command: '!bus [código]' },
     { keywords: ['luz', 'corte', 'sec'], command: '!sec [región]' },
