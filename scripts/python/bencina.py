@@ -4,6 +4,10 @@ import requests
 import sys
 import json
 
+# Asegura que stdout use UTF-8 incluso en Windows (evita UnicodeEncodeError)
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
+
 def obtener_datos_bencina(comuna):
     try:
         url = "https://api.bencinaenlinea.cl/api/busqueda_estacion_filtro"

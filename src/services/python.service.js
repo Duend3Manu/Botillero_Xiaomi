@@ -1,38 +1,29 @@
 const { spawn } = require('child_process');
 const path = require('path');
 
-const PYTHON_COMMAND = process.platform === 'win32' ? 'python' : 'python3';
+async function executeScript(scriptName, args = []) {
+    return new Promise((resolve, reject) => {
+        const scriptPath = path.join(__dirname, '..', '..', 'scripts', 'python', scriptName);
+        const scriptDir = path.dirname(scriptPath);
 
-function executeScript(scriptName, args = []) {
-  return new Promise((resolve, reject) => {
-    const scriptPath = path.join(__dirname, '..', '..', 'scripts', 'python', scriptName);
-    const pythonProcess = spawn(PYTHON_COMMAND, [scriptPath, ...args]);
+        const py = spawn('python', ['-u', scriptPath, ...args], {
+            env: { ...process.env, PYTHONIOENCODING: 'utf-8' },
+            cwd: scriptDir,                 // <- Ejecutar en la carpeta del script
+            stdio: ['ignore', 'pipe', 'pipe']
+        });
 
-    let output = '';
-    let errorOutput = '';
+        let stdout = '';
+        let stderr = '';
 
-    pythonProcess.stdout.on('data', (data) => {
-      output += data.toString();
+        py.stdout.on('data', chunk => stdout += chunk.toString('utf8'));
+        py.stderr.on('data', chunk => stderr += chunk.toString('utf8'));
+
+        py.on('error', err => reject(err));
+        py.on('close', code => {
+            if (code !== 0) return reject(new Error(`El script de Python finalizó con código ${code}.\n${stderr}`));
+            resolve(stdout.trim());
+        });
     });
-
-    pythonProcess.stderr.on('data', (data) => {
-      errorOutput += data.toString();
-    });
-
-    pythonProcess.on('close', (code) => {
-      if (code !== 0) {
-        console.error(`Error en script de Python (${scriptName}): ${errorOutput}`);
-        reject(new Error(`El script de Python finalizó con código ${code}.`));
-      } else {
-        resolve(output.trim());
-      }
-    });
-
-    pythonProcess.on('error', (err) => {
-        console.error(`Fallo al iniciar el script (${scriptName}):`, err);
-        reject(err);
-    });
-  });
 }
 
 module.exports = { executeScript };

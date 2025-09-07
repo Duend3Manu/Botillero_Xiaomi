@@ -1,8 +1,23 @@
 # banner.py
+import os
 import sys
 from PIL import Image, ImageDraw, ImageFont
 import textwrap
 from datetime import datetime # Importamos datetime
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# ejemplo: fuente en scripts/python/assets/fonts/YourFont.ttf
+font_path = os.path.normpath(os.path.join(BASE_DIR, 'assets', 'fonts', 'YourFont.ttf'))
+image_path = os.path.normpath(os.path.join(BASE_DIR, 'assets', 'images', 'background.png'))
+
+# verificación y mensajes claros
+if not os.path.exists(font_path):
+    print(f"Fuente no encontrada: {font_path}", file=sys.stderr)
+    sys.exit(2)
+if not os.path.exists(image_path):
+    print(f"Imagen no encontrada: {image_path}", file=sys.stderr)
+    sys.exit(2)
 
 # --- CONFIGURACIÓN DE ESTILOS (CORREGIDA CON TUS NOMBRES DE ARCHIVO) ---
 ESTILOS = {
