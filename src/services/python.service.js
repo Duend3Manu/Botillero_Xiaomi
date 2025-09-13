@@ -1,29 +1,50 @@
+"use strict";
+
 const { spawn } = require('child_process');
 const path = require('path');
 
-async function executeScript(scriptName, args = []) {
+/**
+ * Ejecuta un script de Python y devuelve su salida.
+ * @param {string} scriptName - El nombre del archivo del script en la carpeta 'scripts/python'.
+ * @param {string[]} args - Una lista de argumentos para pasar al script.
+ * @returns {Promise<string>} La salida estándar del script.
+ */
+function executePythonScript(scriptName, args = []) {
     return new Promise((resolve, reject) => {
         const scriptPath = path.join(__dirname, '..', '..', 'scripts', 'python', scriptName);
-        const scriptDir = path.dirname(scriptPath);
+        
+        // --- ¡LA CORRECCIÓN CLAVE! ---
+        // Le decimos a Node.js que la salida de este proceso debe ser interpretada como texto UTF-8.
+        const pythonProcess = spawn('python', [scriptPath, ...args], { encoding: 'utf8' });
 
-        const py = spawn('python', ['-u', scriptPath, ...args], {
-            env: { ...process.env, PYTHONIOENCODING: 'utf-8' },
-            cwd: scriptDir,                 // <- Ejecutar en la carpeta del script
-            stdio: ['ignore', 'pipe', 'pipe']
+        let output = '';
+        let errorOutput = '';
+
+        pythonProcess.stdout.on('data', (data) => {
+            output += data.toString();
         });
 
-        let stdout = '';
-        let stderr = '';
+        pythonProcess.stderr.on('data', (data) => {
+            errorOutput += data.toString();
+        });
 
-        py.stdout.on('data', chunk => stdout += chunk.toString('utf8'));
-        py.stderr.on('data', chunk => stderr += chunk.toString('utf8'));
+        pythonProcess.on('close', (code) => {
+            if (code !== 0) {
+                // Si hay un error, lo rechazamos para que el handler pueda atraparlo.
+                console.error(`Error al ejecutar ${scriptName}: ${errorOutput}`);
+                reject(new Error(errorOutput || `El script ${scriptName} terminó con el código ${code}`));
+            } else {
+                resolve(output.trim());
+            }
+        });
 
-        py.on('error', err => reject(err));
-        py.on('close', code => {
-            if (code !== 0) return reject(new Error(`El script de Python finalizó con código ${code}.\n${stderr}`));
-            resolve(stdout.trim());
+        pythonProcess.on('error', (err) => {
+            console.error(`Error al iniciar el script ${scriptName}:`, err);
+            reject(err);
         });
     });
 }
 
-module.exports = { executeScript };
+module.exports = {
+    executePythonScript
+};
