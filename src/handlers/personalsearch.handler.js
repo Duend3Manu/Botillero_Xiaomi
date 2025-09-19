@@ -99,9 +99,9 @@ async function handlePhoneSearch(client, message) {
 
             if (urlMatch && urlMatch[1]) {
                 const media = await MessageMedia.fromUrl(urlMatch[1]);
-                await client.sendMessage(message.from, media, { caption: captionText });
+                await client.sendMessage(message.from, media, { caption: "Mensaje de prueba con media." });
             } else {
-                await client.sendMessage(message.from, captionText, { mentions: [senderId] });
+                await client.sendMessage(message.from, "Mensaje de prueba sin media.");
             }
             await message.react('☑️');
         } else {
