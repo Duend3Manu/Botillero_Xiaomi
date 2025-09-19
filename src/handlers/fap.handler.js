@@ -2,6 +2,8 @@
 
 const axios = require('axios');
 const FormData = require('form-data');
+const { spawn } = require('child_process'); // Importar spawn
+const path = require('path'); // Importar path
 
 /**
  * Maneja la búsqueda de contenido en Fapello.
@@ -20,36 +22,38 @@ async function handleFapSearch(client, message) {
 
     await message.react('⏳');
     try {
-        const response = await axios.post(
-            'https://celuzador.porsilapongo.cl/fappello.php',
-            new URLSearchParams({
-                'term': searchTerm
-            }),
-            {
-                headers: {
-                    'User-Agent': 'CeludeitorAPI-TuCulitoSacaLlamaAUFAUF'
+        const pythonScriptPath = path.join(__dirname, '..', '..', 'scripts', 'python', 'fap_search.py');
+        const pythonProcess = spawn('python', [pythonScriptPath, searchTerm]);
+
+        let scriptOutput = '';
+        pythonProcess.stdout.on('data', (data) => {
+            scriptOutput += data.toString();
+        });
+
+        pythonProcess.stderr.on('data', (data) => {
+            console.error(`stderr from python script: ${data}`);
+        });
+
+        await new Promise((resolve, reject) => {
+            pythonProcess.on('close', (code) => {
+                if (code !== 0) {
+                    return reject(new Error(`Python script exited with code ${code}`));
                 }
-            }
-        );
-
-        const resultados = response.data;
-
-        if (resultados && resultados.length > 0) {
-            let mensajeRespuesta = `Resultado de la búsqueda para "${searchTerm}":\n\n`;
-
-            resultados.forEach((resultado, index) => {
-                mensajeRespuesta += `${index + 1}. ${resultado.name} - ${resultado.profile_url}\n`;
+                resolve();
             });
+            pythonProcess.on('error', (err) => {
+                reject(err);
+            });
+        });
 
-            await client.sendMessage(message.from, mensajeRespuesta);
-            await message.react('✅');
-        } else {
-            await client.sendMessage(message.from, `No se encontraron resultados para "${searchTerm}".`);
-            await message.react('❌');
-        }
+        const result = JSON.parse(scriptOutput);
+        const responseText = result.text;
+
+        await client.sendMessage(message.from, responseText);
+        await message.react('✅');
 
     } catch (error) {
-        console.error('Error al realizar la búsqueda en Fapello:', error);
+        console.error('Error al realizar la búsqueda en Fapello (llamando a Python):', error);
         await client.sendMessage(message.from, `⚠️ Hubo un error al buscar en Fapello. Por favor, intenta nuevamente más tarde.`);
         await message.react('❌');
     }

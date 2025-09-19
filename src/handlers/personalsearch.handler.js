@@ -1,10 +1,11 @@
 // src/handlers/personalsearch.handler.js
 "use strict";
-
-const { getPatenteDataFormatted, getRutData } = require('../utils/apiService');
 const { MessageMedia } = require('whatsapp-web.js');
+const { getPatenteDataFormatted, getRutData } = require('../utils/apiService');
 const axios = require('axios');
 const FormData = require('form-data');
+const { spawn } = require('child_process'); // Importar spawn
+const path = require('path'); // Importar path
 
 /**
  * Maneja la búsqueda de patentes de vehículos.
@@ -67,50 +68,61 @@ async function handleTneSearch(message) {
 }
 
 /**
- * Maneja la búsqueda de información de números de teléfono.
+ * Maneja la búsqueda de información de números de teléfono. (VERSIÓN CORREGIDA Y MEJORADA)
  * @param {import('whatsapp-web.js').Client} client - El objeto del cliente de WhatsApp.
  * @param {import('whatsapp-web.js').Message} message - El objeto del mensaje de WhatsApp.
  */
+// REEMPLAZA TU FUNCIÓN CON ESTA PARA DEPURAR
 async function handlePhoneSearch(client, message) {
-        const phoneNumber = message.body.replace(/!num|!tel/g, '').trim();
-    const senderId = message.author || message.from; // Use message.author for groups, message.from for direct messages
-
-    if (!phoneNumber) {
-        await client.sendMessage(message.from, `⚠️ Por favor, ingresa un número de teléfono después del comando.`);
-        await message.react('❌');
-        return;
-    }
-
-    await message.react('⏳');
     try {
-        let data = new FormData();
-        data.append('tlfWA', phoneNumber);
-
-        const response = await axios.post('https://celuzador.porsilapongo.cl/celuzadorApi.php', data, {
-            headers: { 'User-Agent': 'CeludeitorAPI-TuCulitoSacaLlamaAUFAUF', ...data.getHeaders() }
-        });
-
-        if (response.data.estado === 'correcto') {
-            const linkRegex = /\*Link Foto\* : (https?:\/\/[^\s]+)(?=\*Estado)/;
-            const urlMatch = response.data.data.match(linkRegex);
-
-            let cleanData = response.data.data.replace(linkRegex, '').trim();
-            const captionText = `ℹ️ Información del número ℹ️\n${cleanData}`;
-
-            if (urlMatch && urlMatch[1]) {
-                const media = await MessageMedia.fromUrl(urlMatch[1]);
-                await client.sendMessage(message.from, media, { caption: captionText });
-            } else {
-                await client.sendMessage(message.from, captionText);
-            }
-            await message.react('☑️');
-        } else {
-            await client.sendMessage(message.from, `${response.data.data}`);
-            await message.react('❌');
+        const phoneNumber = message.body.replace(/!num|!tel/g, '').trim();
+        if (!phoneNumber) {
+            return await message.reply('⚠️ Falta el número.');
         }
+
+        await message.reply(`📞 Depurando envío para *${phoneNumber}*...`);
+        await message.react('⏳');
+
+        // --- DATOS SIMULADOS PARA NO DEPENDER DE PYTHON ---
+        // Usaremos datos fijos para que las pruebas sean consistentes.
+        const responseText = "Este es un texto de prueba con formato *negrita* y emojis 😃.";
+        const imageUrl = "https://i.pinimg.com/originals/66/b8/58/66b858099df3127e83cb1f1168f7a2c6.jpg"; // Una URL que sabemos que funciona
+        const chatId = message.author || message.from;
+
+        // -----------------------------------------------------------------
+        // COMIENZA A DESCOMENTAR LAS PRUEBAS UNA POR UNA, EN ORDEN
+        // -----------------------------------------------------------------
+
+        // -- PRUEBA 1: ¿Puede el bot enviar CUALQUIER COSA a este chat? --
+        // Objetivo: Confirmar que el chatId es válido y la conexión está OK.
+        await client.sendMessage(chatId, 'Prueba 1: Hola Mundo');
+
+
+        // -- PRUEBA 2: ¿El problema es el texto que viene de Python? --
+        // Objetivo: Ver si el contenido de 'responseText' causa el error.
+        // await client.sendMessage(chatId, responseText);
+
+
+        // -- PRUEBA 3: ¿El problema es crear o enviar la imagen (sin texto)? --
+        // Objetivo: Aislar el objeto MessageMedia.
+        // const media = await MessageMedia.fromUrl(imageUrl, { unsafeMime: true });
+        // await client.sendMessage(chatId, media);
+
+
+        // -- PRUEBA 4: ¿El problema es la combinación de imagen + texto? --
+        // Objetivo: Replicar el comportamiento final deseado.
+        // const media = await MessageMedia.fromUrl(imageUrl, { unsafeMime: true });
+        // await client.sendMessage(chatId, media, { caption: responseText });
+
+
+        // -----------------------------------------------------------------
+
+        await message.react('✅');
+        console.log("Prueba finalizada con éxito.");
+
     } catch (error) {
-        console.error("Error en handlePhoneSearch:", error);
-        await client.sendMessage(message.from, `⚠️ Hubo un error al buscar la información del número. Por favor, intenta nuevamente más tarde.`);
+        console.error("La prueba falló con el error:", error);
+        await message.reply(`❌ La prueba falló.`);
         await message.react('❌');
     }
 }

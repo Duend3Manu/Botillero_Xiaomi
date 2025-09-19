@@ -10,9 +10,11 @@ const express = require('express');
 
 console.log("Iniciando Botillero v2.0 (Arquitectura Híbrida)...");
 
+// ESTE BLOQUE CONTIENE LA CONFIGURACIÓN FINAL Y CORRECTA
 const client = new Client({
     authStrategy: new LocalAuth(),
-        puppeteer: { 
+    puppeteer: {
+        executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
         headless: true,
         args: [
             '--no-sandbox',
@@ -23,6 +25,10 @@ const client = new Client({
             '--no-zygote',
             '--disable-gpu',
         ]
+    },
+    webVersionCache: {
+      type: 'remote',
+      remotePath: 'https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.2412.54.html'
     }
 });
 
@@ -35,15 +41,12 @@ client.on('ready', () => {
 });
 
 // --- MANEJADOR DE MENSAJES CON ADAPTADOR ---
-client.on('message', async (message) => { // <-- Fíjate que la variable se llama 'message'
+client.on('message', async (message) => {
     try {
-        // 1. Adaptamos el mensaje de WhatsApp a nuestro formato universal
         const adaptedMessage = await adaptWhatsappMessage(client, message);
         
-        // 2. Pasamos el mensaje adaptado Y el original al commandHandler
         if (adaptedMessage) {
             await keywordHandler(adaptedMessage);
-            // El cambio es aquí: usamos 'message' en lugar de 'msg'
             await commandHandler(client, adaptedMessage);
         }
     } catch (error) {
