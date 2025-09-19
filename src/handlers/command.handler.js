@@ -17,6 +17,7 @@ const {
 } = require('./fun.handler');
 const { handleWikiSearch, handleNews, handleGoogleSearch } = require('./search.handler');
 const { handleXvideosSearch } = require('./adult.handler');
+const { handleFapSearch } = require('./fap.handler'); // New import
 
 const { handleAiHelp } = require('./ai.handler');
 const { handlePatenteSearch, handleTneSearch, handlePhoneSearch } = require('./personalsearch.handler.js');
@@ -181,6 +182,9 @@ async function commandHandler(client, message) {
             
             case 'xv':
                 return message.reply(await handleXvideosSearch(message));
+            
+            case 'fap': // New case for !fap command
+                return handleFapSearch(client, message);
             
             case 'ayuda': return message.reply(await handleAiHelp(message));
             

@@ -72,9 +72,13 @@ async function handleTneSearch(message) {
  * @param {import('whatsapp-web.js').Message} message - El objeto del mensaje de WhatsApp.
  */
 async function handlePhoneSearch(client, message) {
-    const phoneNumber = message.body.replace(/!num|!tel/g, '').trim();
+    const phoneNumber = message.body.replace(/!num|!tel/g, '').replace(/[\x20-\x7E]/g, '').trim();
+    const senderId = message.author || message.from; // Use message.author for groups, message.from for direct messages
+
     if (!phoneNumber) {
-        return message.reply("Debes ingresar un número de teléfono. Ejemplo: `!num 56912345678`");
+        await client.sendMessage(message.from, `⚠️ Por favor, ingresa un número de teléfono después del comando.`, { mentions: [senderId] });
+        await message.react('❌');
+        return;
     }
 
     await message.react('⏳');
@@ -87,27 +91,27 @@ async function handlePhoneSearch(client, message) {
         });
 
         if (response.data.estado === 'correcto') {
-            const linkRegex = /\*Link Foto\* : (https?:\/\/[^\s]+)/;
+            const linkRegex = /\*Link Foto\* : (https?:\/\/[^\s]+)(?=\*Estado)/;
             const urlMatch = response.data.data.match(linkRegex);
 
-            await message.react('✅');
             let cleanData = response.data.data.replace(linkRegex, '').trim();
+            const captionText = `ℹ️ Información del número ℹ️\n@${senderId} ${cleanData}`;
+
             if (urlMatch && urlMatch[1]) {
                 const media = await MessageMedia.fromUrl(urlMatch[1]);
-                await message.reply(media, undefined, { caption: `ℹ️ *Información del número:*
-${cleanData}` });
+                await client.sendMessage(message.from, media, { caption: captionText, mentions: [senderId] });
             } else {
-                await message.reply(`ℹ️ *Información del número:*
-${cleanData}`);
+                await client.sendMessage(message.from, captionText, { mentions: [senderId] });
             }
+            await message.react('☑️');
         } else {
+            await client.sendMessage(message.from, `@${senderId} ${response.data.data}`, { mentions: [senderId] });
             await message.react('❌');
-            await message.reply(response.data.data);
         }
     } catch (error) {
         console.error("Error en handlePhoneSearch:", error);
+        await client.sendMessage(message.from, `@${senderId} ⚠️ Hubo un error al buscar la información del número. Por favor, intenta nuevamente más tarde.`, { mentions: [senderId] });
         await message.react('❌');
-        await message.reply("Hubo un error al buscar la información del número.");
     }
 }
 
