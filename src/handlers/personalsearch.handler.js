@@ -18,7 +18,7 @@ async function handlePatenteSearch(message) {
     }
     
     await message.react('⏳');
-    const nombre = message._data.notifyName || 'amigo(a)';
+    const nombre = message._data && message._data.notifyName ? message._data.notifyName : 'amigo(a)';
     await message.reply(`¡Hola ${nombre}! 🚗 Estoy procesando tu consulta de patente *${patente}*...`);
     
     const result = await getPatenteDataFormatted(patente);
@@ -91,11 +91,14 @@ async function handlePhoneSearch(client, message) {
             const urlMatch = response.data.data.match(linkRegex);
 
             await message.react('✅');
+            let cleanData = response.data.data.replace(linkRegex, '').trim();
             if (urlMatch && urlMatch[1]) {
                 const media = await MessageMedia.fromUrl(urlMatch[1]);
-                await message.reply(media, undefined, { caption: `ℹ️ *Información del número:*\n${response.data.data}` });
+                await message.reply(media, undefined, { caption: `ℹ️ *Información del número:*
+${cleanData}` });
             } else {
-                await message.reply(`ℹ️ *Información del número:*\n${response.data.data}`);
+                await message.reply(`ℹ️ *Información del número:*
+${cleanData}`);
             }
         } else {
             await message.react('❌');
