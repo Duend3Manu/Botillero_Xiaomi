@@ -72,11 +72,11 @@ async function handleTneSearch(message) {
  * @param {import('whatsapp-web.js').Message} message - El objeto del mensaje de WhatsApp.
  */
 async function handlePhoneSearch(client, message) {
-    const phoneNumber = message.body.replace(/!num|!tel/g, '').replace(/[\x20-\x7E]/g, '').trim();
+        const phoneNumber = message.body.replace(/!num|!tel/g, '').trim();
     const senderId = message.author || message.from; // Use message.author for groups, message.from for direct messages
 
     if (!phoneNumber) {
-        await client.sendMessage(message.from, `⚠️ Por favor, ingresa un número de teléfono después del comando.`, { mentions: [senderId] });
+        await client.sendMessage(message.from, `⚠️ Por favor, ingresa un número de teléfono después del comando. @${senderId}`);
         await message.react('❌');
         return;
     }
@@ -99,7 +99,7 @@ async function handlePhoneSearch(client, message) {
 
             if (urlMatch && urlMatch[1]) {
                 const media = await MessageMedia.fromUrl(urlMatch[1]);
-                await client.sendMessage(message.from, media, { caption: captionText, mentions: [senderId] });
+                await client.sendMessage(message.from, media, { caption: captionText });
             } else {
                 await client.sendMessage(message.from, captionText, { mentions: [senderId] });
             }

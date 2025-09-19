@@ -41,16 +41,16 @@ async function handleFapSearch(client, message) {
                 mensajeRespuesta += `${index + 1}. ${resultado.name} - ${resultado.profile_url}\n`;
             });
 
-            await client.sendMessage(message.from, mensajeRespuesta, { mentions: [senderId] });
+            await client.sendMessage(message.from, mensajeRespuesta);
             await message.react('✅');
         } else {
-            await client.sendMessage(message.from, `@${senderId} Lo siento, no se encontraron resultados para tu búsqueda.`, { mentions: [senderId] });
+            await client.sendMessage(message.from, `No se encontraron resultados para "${searchTerm}".`);
             await message.react('❌');
         }
 
     } catch (error) {
         console.error('Error al realizar la búsqueda en Fapello:', error);
-        await client.sendMessage(message.from, `@${senderId} Lo siento, ha ocurrido un error al realizar la búsqueda.`, { mentions: [senderId] });
+        await client.sendMessage(message.from, `@${senderId} ⚠️ Hubo un error al buscar en Fapello. Por favor, intenta nuevamente más tarde.`, { mentions: [senderId] });
         await message.react('❌');
     }
 }
