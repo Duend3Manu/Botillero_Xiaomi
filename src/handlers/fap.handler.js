@@ -13,7 +13,7 @@ async function handleFapSearch(client, message) {
     const senderId = message.author || message.from; // Use message.author for groups, message.from for direct messages
 
     if (!searchTerm) {
-        await client.sendMessage(message.from, `@${senderId} Por favor ingresa un término de búsqueda después de !fap`, { mentions: [senderId] });
+        await client.sendMessage(message.from, `Por favor ingresa un término de búsqueda después de !fap`);
         await message.react('❌');
         return;
     }
@@ -50,7 +50,7 @@ async function handleFapSearch(client, message) {
 
     } catch (error) {
         console.error('Error al realizar la búsqueda en Fapello:', error);
-        await client.sendMessage(message.from, `@${senderId} ⚠️ Hubo un error al buscar en Fapello. Por favor, intenta nuevamente más tarde.`, { mentions: [senderId] });
+        await client.sendMessage(message.from, `⚠️ Hubo un error al buscar en Fapello. Por favor, intenta nuevamente más tarde.`);
         await message.react('❌');
     }
 }

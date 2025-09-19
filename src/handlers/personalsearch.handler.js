@@ -76,7 +76,7 @@ async function handlePhoneSearch(client, message) {
     const senderId = message.author || message.from; // Use message.author for groups, message.from for direct messages
 
     if (!phoneNumber) {
-        await client.sendMessage(message.from, `⚠️ Por favor, ingresa un número de teléfono después del comando. @${senderId}`);
+        await client.sendMessage(message.from, `⚠️ Por favor, ingresa un número de teléfono después del comando.`);
         await message.react('❌');
         return;
     }
@@ -95,22 +95,22 @@ async function handlePhoneSearch(client, message) {
             const urlMatch = response.data.data.match(linkRegex);
 
             let cleanData = response.data.data.replace(linkRegex, '').trim();
-            const captionText = `ℹ️ Información del número ℹ️\n@${senderId} ${cleanData}`;
+            const captionText = `ℹ️ Información del número ℹ️\n${cleanData}`;
 
             if (urlMatch && urlMatch[1]) {
                 const media = await MessageMedia.fromUrl(urlMatch[1]);
-                await client.sendMessage(message.from, media, { caption: "Mensaje de prueba con media." });
+                await client.sendMessage(message.from, media, { caption: captionText });
             } else {
-                await client.sendMessage(message.from, "Mensaje de prueba sin media.");
+                await client.sendMessage(message.from, captionText);
             }
             await message.react('☑️');
         } else {
-            await client.sendMessage(message.from, `@${senderId} ${response.data.data}`, { mentions: [senderId] });
+            await client.sendMessage(message.from, `${response.data.data}`);
             await message.react('❌');
         }
     } catch (error) {
         console.error("Error en handlePhoneSearch:", error);
-        await client.sendMessage(message.from, `@${senderId} ⚠️ Hubo un error al buscar la información del número. Por favor, intenta nuevamente más tarde.`, { mentions: [senderId] });
+        await client.sendMessage(message.from, `⚠️ Hubo un error al buscar la información del número. Por favor, intenta nuevamente más tarde.`);
         await message.react('❌');
     }
 }
