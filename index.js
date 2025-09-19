@@ -12,8 +12,7 @@ console.log("Iniciando Botillero v2.0 (Arquitectura Híbrida)...");
 
 const client = new Client({
     authStrategy: new LocalAuth(),
-    puppeteer: {
-        executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe', // Ruta a Chrome en Windows
+        puppeteer: { 
         headless: true,
         args: [
             '--no-sandbox',
