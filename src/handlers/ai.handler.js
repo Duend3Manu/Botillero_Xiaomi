@@ -13,10 +13,12 @@ const commandKnowledgeBase = [
     { keywords: ['metro', 'subterraneo'], command: '!metro' },
     { keywords: ['patente', 'auto', 'vehiculo'], command: '!pat [patente]' },
     { keywords: ['sticker', 'stiker', 's'], command: '!s' },
+    
     { keywords: ['sismo', 'temblor'], command: '!sismos' },
     { keywords: ['micro', 'paradero', 'bus'], command: '!bus [código]' },
     { keywords: ['luz', 'corte', 'sec'], command: '!sec [región]' },
     { keywords: ['ping', 'estado', 'sistema'], command: '!ping' },
+    
     { keywords: ['ayuda', 'comando', 'menu'], command: '!menu' }
 ];
 

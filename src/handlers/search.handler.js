@@ -1,9 +1,7 @@
-// src/handlers/search.handler.js
 "use strict";
 
 const axios = require('axios');
 const cheerio = require('cheerio');
-const GoogleIt = require('google-it');
 const { getPatenteDataFormatted } = require('../utils/apiService');
 
 async function handleWikiSearch(message) {
@@ -69,23 +67,31 @@ async function handleGoogleSearch(message) {
     }
     
     try {
-        const results = await GoogleIt({ query: searchTerm });
-        
-        // --- INICIO DE LA MEJORA ---
-        // 1. Verificamos si la respuesta es válida y tiene resultados.
-        if (!results || results.length === 0) {
-            console.log("La librería google-it no devolvió resultados para:", searchTerm);
-            return `No se encontraron resultados en Google para *"${searchTerm}"*.`;
-        }
-        // --- FIN DE LA MEJORA ---
+        const response = await axios.get(`https://html.duckduckgo.com/html/?q=${encodeURIComponent(searchTerm)}`);
+        const $ = cheerio.load(response.data);
 
-        let response = `Resultados de Google para *"${searchTerm}"*:\n\n`;
-        results.slice(0, 4).forEach((result, index) => {
-            response += `*${index + 1}. ${result.title}*\n`;
-            response += `_${result.snippet}_\n`;
-            response += `${result.link}\n\n`;
+        const results = [];
+        $('.result').each((i, el) => {
+            const title = $(el).find('.result__title a').text();
+            const link = $(el).find('a.result__a').attr('href');
+            const snippet = $(el).find('.result__snippet').text();
+            if (title && link && snippet) {
+                results.push({ title, link, snippet });
+            }
         });
-        return response;
+
+        if (results.length === 0) {
+            return `No se encontraron resultados para *"${searchTerm}"*.`;
+        }
+
+        let replyMessage = `Resultados de búsqueda para *"${searchTerm}"*:\n\n`;
+        results.slice(0, 5).forEach((result, index) => {
+            replyMessage += `*${index + 1}. ${result.title}*\n`;
+            replyMessage += `_${result.snippet}_\n`;
+            replyMessage += `${result.link}\n\n`;
+        });
+        return replyMessage;
+
     } catch (error) {
         console.error("Error en búsqueda de Google:", error);
         return "Hubo un error al buscar en Google.";
