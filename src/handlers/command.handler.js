@@ -74,7 +74,7 @@ async function commandHandler(client, message) {
         const randomResponse = responses[Math.floor(Math.random() * responses.length)];
         const contact = await client.getContactById(message.senderId);
         const text = `${randomResponse} @${contact.pushname}`;
-        await client.sendMessage(message.chatId, text, { mentions: [contact] });
+        await client.sendMessage(message.chatId, text, { mentions: [contact.id._serialized] });
 
         const simpleCommandResponse = handleSimpleCommand(command);
         if (simpleCommandResponse) {
