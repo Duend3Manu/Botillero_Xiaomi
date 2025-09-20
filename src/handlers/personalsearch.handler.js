@@ -76,27 +76,56 @@ async function handlePhoneSearch(client, message) {
     try {
         const phoneNumber = message.body.replace(/!num|!tel/g, '').trim();
         if (!phoneNumber) {
-            return await message.reply('⚠️ Falta el número.');
+            return await message.reply('⚠️ Falta el número de teléfono.');
         }
 
-        await message.reply(`📞 Procesando consulta para *${phoneNumber}*...`);
+        await message.reply(`📞 Consultando información para *${phoneNumber}*...`);
         await message.react('⏳');
 
-        // Usamos los datos simulados para la versión final de la prueba
-        const responseText = "Este es un texto de prueba con formato *negrita* y emojis 😃.";
-        const imageUrl = "https://i.pinimg.com/originals/66/b8/58/66b858099df3127e83cb1f1168f7a2c6.jpg";
-        const chatId = message.chatId;
+        const pythonScriptPath = path.join(__dirname, '..' , '..' , 'scripts', 'python', 'phone_info.py');
+        const pythonProcess = spawn('python', [pythonScriptPath, phoneNumber]);
 
-        // Lógica final combinada (equivalente a Prueba 4)
-        const media = await MessageMedia.fromUrl(imageUrl, { unsafeMime: true });
-        await client.sendMessage(chatId, media, { caption: responseText });
+        let scriptOutput = '';
+        let scriptError = '';
 
-        await message.react('✅');
-        console.log("Comando !tel finalizado con éxito con datos de prueba.");
+        pythonProcess.stdout.on('data', (data) => {
+            scriptOutput += data.toString();
+        });
+
+        pythonProcess.stderr.on('data', (data) => {
+            scriptError += data.toString();
+        });
+
+        pythonProcess.on('close', async (code) => {
+            if (code !== 0) {
+                console.error(`Error en script de Python (código ${code}): ${scriptError}`);
+                await message.reply(`❌ Ocurrió un error al consultar la información. Detalles: ${scriptError}`);
+                await message.react('❌');
+                return;
+            }
+
+            try {
+                const result = JSON.parse(scriptOutput);
+                if (result.error) {
+                    await message.reply(`⚠️ No se encontró información: ${result.error}`);
+                    await message.react('🤔');
+                    return;
+                }
+
+                const media = await MessageMedia.fromUrl(result.image_url, { unsafeMime: true });
+                await client.sendMessage(message.chatId, media, { caption: result.text });
+                await message.react('✅');
+
+            } catch (parseError) {
+                console.error('Error al parsear JSON de Python:', parseError);
+                await message.reply(`❌ Error al procesar la respuesta del servicio. Respuesta recibida:\n\n${scriptOutput}`);
+                await message.react('❌');
+            }
+        });
 
     } catch (error) {
         console.error("Error en handlePhoneSearch:", error);
-        await message.reply(`❌ Ocurrió un error al procesar la consulta.`);
+        await message.reply(`❌ Ocurrió un error inesperado al procesar tu consulta.`);
         await message.react('❌');
     }
 }
