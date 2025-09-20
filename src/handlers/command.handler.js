@@ -72,7 +72,9 @@ async function commandHandler(client, message) {
         // Respuestas aleatorias y mención al usuario
         const responses = ['Al tiro', 'Estamos en eso'];
         const randomResponse = responses[Math.floor(Math.random() * responses.length)];
-        await message.reply(`${randomResponse} @${message.senderName}`, { mentions: [message.senderId] });
+        const contact = await client.getContactById(message.senderId);
+        const text = `${randomResponse} @${contact.pushname}`;
+        await client.sendMessage(message.chatId, text, { mentions: [message.senderId] });
 
         const simpleCommandResponse = handleSimpleCommand(command);
         if (simpleCommandResponse) {
