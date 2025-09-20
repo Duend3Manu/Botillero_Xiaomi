@@ -105,8 +105,8 @@ async function handlePhoneSearch(client, message) {
 
         // -- PRUEBA 3: ¿El problema es crear o enviar la imagen (sin texto)? --
         // Objetivo: Aislar el objeto MessageMedia.
-        // const media = await MessageMedia.fromUrl(imageUrl, { unsafeMime: true });
-        // await client.sendMessage(chatId, media);
+        const media = await MessageMedia.fromUrl(imageUrl, { unsafeMime: true });
+        await client.sendMessage(chatId, media);
 
 
         // -- PRUEBA 4: ¿El problema es la combinación de imagen + texto? --
