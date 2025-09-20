@@ -102,10 +102,14 @@ async function adaptWhatsappMessage(client, msg) {
         // Enviar mensaje simple (texto o Media)
         sendMessage: (content, options) => client.sendMessage(msg.from, content, options),
 
-        // reply mantiene compatibilidad con handlers que usan message.reply(...)
+        // reply ya no usará el método obsoleto msg.reply.
+        // Usará client.sendMessage con el ID del mensaje original para citarlo.
         reply: (text, options) => {
-            // msg.reply acepta (text, quotedMsgId, options) en algunas versiones; usar msg.reply seguro
-            try { return msg.reply(text, undefined, options); } catch (e) { return client.sendMessage(msg.from, text, options); }
+            const replyOptions = {
+                ...(options || {}),
+                quotedMessageId: msg.id._serialized
+            };
+            return client.sendMessage(msg.from, text, replyOptions);
         },
 
         // react / showLoading seguros
