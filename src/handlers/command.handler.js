@@ -74,7 +74,7 @@ async function commandHandler(client, message) {
         const randomResponse = responses[Math.floor(Math.random() * responses.length)];
         const contact = await client.getContactById(message.senderId);
         const text = `${randomResponse} @${contact.pushname}`;
-        await client.sendMessage(message.chatId, text, { mentions: [message.senderId] });
+        await client.sendMessage(message.chatId, text, { mentions: [contact] });
 
         const simpleCommandResponse = handleSimpleCommand(command);
         if (simpleCommandResponse) {
@@ -86,7 +86,7 @@ async function commandHandler(client, message) {
         }
 
         // --- Manejo del resto de comandos ---
-        let replyMessage; // <-- CAMBIO 5: Se define replyMessage aquí
+        /* let replyMessage; // <-- CAMBIO 5: Se define replyMessage aquí
         switch (command) {
             // Comandos de Fútbol y Deportes
             case 'tabla': case 'ligatabla':
@@ -205,7 +205,7 @@ ${message.chatId}`);
         // Si se llegó aquí, significa que se encontró un handler y se ejecutó
         if (replyMessage) {
             return message.reply(replyMessage);
-        }
+        }*/
     } catch (err) {
         console.error("[command.handler] Error inesperado:", err);
         message.reply("Ocurrió un error inesperado al procesar tu comando.");
