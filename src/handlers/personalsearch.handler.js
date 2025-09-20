@@ -100,7 +100,7 @@ async function handlePhoneSearch(client, message) {
 
         // -- PRUEBA 2: ¿El problema es el texto que viene de Python? --
         // Objetivo: Ver si el contenido de 'responseText' causa el error.
-        // await client.sendMessage(chatId, responseText);
+        await client.sendMessage(chatId, responseText);
 
 
         // -- PRUEBA 3: ¿El problema es crear o enviar la imagen (sin texto)? --
