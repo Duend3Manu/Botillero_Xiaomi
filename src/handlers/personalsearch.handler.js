@@ -112,7 +112,7 @@ async function handlePhoneSearch(client, message) {
                     return;
                 }
 
-                const media = await MessageMedia.fromUrl(result.image_url, { unsafeMime: true });
+                const media = await MessageMedia.fromUrl(result.imageUrl, { unsafeMime: true });
                 await client.sendMessage(message.chatId, media, { caption: result.text });
                 await message.react('✅');
 
