@@ -77,16 +77,6 @@ async function commandHandler(client, message) {
         const simpleCommandResponse = handleSimpleCommand(command);
         if (simpleCommandResponse) {
             return message.reply(simpleCommandResponse);
-        }ext.startsWith('/')) {
-            return;
-        }
-
-        const command = rawText.substring(1).split(' ')[0];
-        console.log(`(Handler) -> Comando recibido en ${message.platform}: "${command}"`);
-
-        const simpleCommandResponse = handleSimpleCommand(command);
-        if (simpleCommandResponse) {
-            return message.reply(simpleCommandResponse);
         }
 
         if (countdownCommands.includes(command)) {
