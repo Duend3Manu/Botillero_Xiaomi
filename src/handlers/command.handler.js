@@ -59,7 +59,7 @@ async function commandHandler(client, message) {
 
         // --- Menciones y comandos especiales sin prefijo ---
         // if (rawText.includes('bot')) return handleBotMention(client, message); // <-- CAMBIO 2: Se pasa 'client'
-        if (rawText.includes('once') || rawText.includes('11')) return handleOnce(client, message); // <-- CAMBIO 3: Se pasa 'client'
+        
 
         // Ignoramos mensajes que no son comandos con prefijo
         if (!rawText.startsWith('!') && !rawText.startsWith('/')) {

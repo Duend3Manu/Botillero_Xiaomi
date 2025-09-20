@@ -109,7 +109,7 @@ const frases = {
     8: 'No soy un bot, soy una IA con estilo. 😎',
     9: '¡Atención, soy un bot de respuesta automática! Pero no puedo hacer café... aún. ☕',
     10: 'Eso es lo que un bot diría. 🤖',
-    11: '¡Oh no, me has descubierto! Soy un bot maestro del disfraz. 😁',
+    
     12: 'Parece que llegó el comediante del grupo. 🤣',
     13: 'El humor está de moda, y tú eres el líder. 😄👑',
     14: 'Con ese humor, podrías competir en el festival de Viña del Mar. 🎤😄',
@@ -208,21 +208,7 @@ async function handleBotMention(client, message) {
     }
 }
 
-async function handleOnce(client, message) {
-    if (!message) { return; }
-    try {
-        const contact = await client.getContactById(message.senderId);
-        await message.react('😂');
 
-        const textoFinal = `Chúpalo entonces, @${contact.pushname}`;
-        // --- SOLUCIÓN DEFINITIVA PARA MENCIONES ---
-        await client.sendMessage(message.chatId, textoFinal, { 
-            mentions: [message.senderId]
-        });
-    } catch (e) {
-        console.error("Error en handleOnce:", e);
-    }
-}
 
 function handleSimpleCommand(command) {
     switch (command) {
@@ -268,6 +254,5 @@ module.exports = {
     handleStickerToMedia,
     handleCountdown,
     handleBotMention,
-    handleOnce,
     handleSimpleCommand
 };
