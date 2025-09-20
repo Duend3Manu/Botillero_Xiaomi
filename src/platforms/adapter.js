@@ -35,7 +35,14 @@ async function adaptWhatsappMessage(client, msg) {
 
     // Texto y parsing de comando/args
     const rawBody = (msg.body || '').toString();
-    const trimmed = rawBody.trim();
+    
+    // Limpiar menciones del cuerpo del mensaje para evitar interferir con los comandos
+    // Si hay menciones, se quitan y se hace un trim. Si no, se usa el body tal cual.
+    const cleanedBody = (msg.mentionedIds && msg.mentionedIds.length > 0)
+        ? rawBody.replace(/@\d+/g, '')
+        : rawBody;
+
+    const trimmed = cleanedBody.trim();
     const hasPrefix = trimmed.startsWith('!') || trimmed.startsWith('/');
     const command = hasPrefix ? trimmed.slice(1).split(/\s+/)[0].toLowerCase() : null;
     const args = hasPrefix
