@@ -21,16 +21,15 @@ async function handleTagAll(client, message) {
         let text = "";
         let mentions = [];
 
-        // 3. Construir el texto y la lista de menciones
+        // 3. Construir el texto y la lista de menciones (con IDs)
         for (let participant of participants) {
-            // El ID del contacto se usa para la mención
-            const contact = await client.getContactById(participant.id._serialized);
-            mentions.push(contact);
+            // El ID serializado del participante se usa para la mención
+            mentions.push(participant.id._serialized);
             text += `@${participant.id.user} `;
         }
 
         // 4. Enviar el mensaje con el texto y las menciones
-        // Se envía al ID del chat, y se pasa la opción 'mentions'
+        // Se envía al ID del chat, y se pasa la opción 'mentions' con los IDs
         await chat.sendMessage(text, { mentions });
 
     } catch (e) {
