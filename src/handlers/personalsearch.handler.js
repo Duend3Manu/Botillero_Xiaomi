@@ -111,8 +111,8 @@ async function handlePhoneSearch(client, message) {
 
         // -- PRUEBA 4: ¿El problema es la combinación de imagen + texto? --
         // Objetivo: Replicar el comportamiento final deseado.
-        // const media = await MessageMedia.fromUrl(imageUrl, { unsafeMime: true });
-        // await client.sendMessage(chatId, media, { caption: responseText });
+        const media = await MessageMedia.fromUrl(imageUrl, { unsafeMime: true });
+        await client.sendMessage(chatId, media, { caption: responseText });
 
 
         // -----------------------------------------------------------------
