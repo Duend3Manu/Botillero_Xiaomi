@@ -72,7 +72,6 @@ async function handleTneSearch(message) {
  * @param {import('whatsapp-web.js').Client} client - El objeto del cliente de WhatsApp.
  * @param {import('whatsapp-web.js').Message} message - El objeto del mensaje de WhatsApp.
  */
-// REEMPLAZA TU FUNCIÓN CON ESTA PARA DEPURAR
 async function handlePhoneSearch(client, message) {
     try {
         const phoneNumber = message.body.replace(/!num|!tel/g, '').trim();
@@ -80,49 +79,24 @@ async function handlePhoneSearch(client, message) {
             return await message.reply('⚠️ Falta el número.');
         }
 
-        await message.reply(`📞 Depurando envío para *${phoneNumber}*...`);
+        await message.reply(`📞 Procesando consulta para *${phoneNumber}*...`);
         await message.react('⏳');
 
-        // --- DATOS SIMULADOS PARA NO DEPENDER DE PYTHON ---
-        // Usaremos datos fijos para que las pruebas sean consistentes.
+        // Usamos los datos simulados para la versión final de la prueba
         const responseText = "Este es un texto de prueba con formato *negrita* y emojis 😃.";
-        const imageUrl = "https://i.pinimg.com/originals/66/b8/58/66b858099df3127e83cb1f1168f7a2c6.jpg"; // Una URL que sabemos que funciona
+        const imageUrl = "https://i.pinimg.com/originals/66/b8/58/66b858099df3127e83cb1f1168f7a2c6.jpg";
         const chatId = message.chatId;
 
-        // -----------------------------------------------------------------
-        // COMIENZA A DESCOMENTAR LAS PRUEBAS UNA POR UNA, EN ORDEN
-        // -----------------------------------------------------------------
-
-        // -- PRUEBA 1: ¿Puede el bot enviar CUALQUIER COSA a este chat? --
-        // Objetivo: Confirmar que el chatId es válido y la conexión está OK.
-        await client.sendMessage(chatId, 'Prueba 1: Hola Mundo');
-
-
-        // -- PRUEBA 2: ¿El problema es el texto que viene de Python? --
-        // Objetivo: Ver si el contenido de 'responseText' causa el error.
-        await client.sendMessage(chatId, responseText);
-
-
-        // -- PRUEBA 3: ¿El problema es crear o enviar la imagen (sin texto)? --
-        // Objetivo: Aislar el objeto MessageMedia.
-        const media = await MessageMedia.fromUrl(imageUrl, { unsafeMime: true });
-        await client.sendMessage(chatId, media);
-
-
-        // -- PRUEBA 4: ¿El problema es la combinación de imagen + texto? --
-        // Objetivo: Replicar el comportamiento final deseado.
+        // Lógica final combinada (equivalente a Prueba 4)
         const media = await MessageMedia.fromUrl(imageUrl, { unsafeMime: true });
         await client.sendMessage(chatId, media, { caption: responseText });
 
-
-        // -----------------------------------------------------------------
-
         await message.react('✅');
-        console.log("Prueba finalizada con éxito.");
+        console.log("Comando !tel finalizado con éxito con datos de prueba.");
 
     } catch (error) {
-        console.error("La prueba falló con el error:", error);
-        await message.reply(`❌ La prueba falló.`);
+        console.error("Error en handlePhoneSearch:", error);
+        await message.reply(`❌ Ocurrió un error al procesar la consulta.`);
         await message.react('❌');
     }
 }
