@@ -8,7 +8,7 @@
  */
 async function handleTagAll(client, message) {
     try {
-        const chat = await message.getChat();
+        const chat = message.chat;
 
         // 1. Verificar si el chat es un grupo
         if (!chat.isGroup) {

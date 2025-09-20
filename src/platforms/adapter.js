@@ -79,7 +79,7 @@ async function adaptWhatsappMessage(client, msg) {
 
     return {
         platform: 'whatsapp',
-        raw: msg,
+        chat: chat,
         id: msg.id && msg.id._serialized ? msg.id._serialized : undefined,
         chatId: msg.from,
         text: rawBody,
