@@ -87,7 +87,7 @@ async function handlePhoneSearch(client, message) {
         // Usaremos datos fijos para que las pruebas sean consistentes.
         const responseText = "Este es un texto de prueba con formato *negrita* y emojis 😃.";
         const imageUrl = "https://i.pinimg.com/originals/66/b8/58/66b858099df3127e83cb1f1168f7a2c6.jpg"; // Una URL que sabemos que funciona
-        const chatId = message.author || message.from;
+        const chatId = message.chatId;
 
         // -----------------------------------------------------------------
         // COMIENZA A DESCOMENTAR LAS PRUEBAS UNA POR UNA, EN ORDEN
