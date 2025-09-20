@@ -58,11 +58,26 @@ async function commandHandler(client, message) {
         const rawText = message.text.toLowerCase().trim();
 
         // --- Menciones y comandos especiales sin prefijo ---
-        if (rawText.includes('bot')) return handleBotMention(client, message); // <-- CAMBIO 2: Se pasa 'client'
+        // if (rawText.includes('bot')) return handleBotMention(client, message); // <-- CAMBIO 2: Se pasa 'client'
         if (rawText.includes('once') || rawText.includes('11')) return handleOnce(client, message); // <-- CAMBIO 3: Se pasa 'client'
 
         // Ignoramos mensajes que no son comandos con prefijo
         if (!rawText.startsWith('!') && !rawText.startsWith('/')) {
+            return;
+        }
+
+        const command = rawText.substring(1).split(' ')[0];
+        console.log(`(Handler) -> Comando recibido en ${message.platform}: "${command}"`);
+
+        // Respuestas aleatorias y mención al usuario
+        const responses = ['Al tiro', 'Estamos en eso'];
+        const randomResponse = responses[Math.floor(Math.random() * responses.length)];
+        await message.reply(`${randomResponse} @${message.author}`);
+
+        const simpleCommandResponse = handleSimpleCommand(command);
+        if (simpleCommandResponse) {
+            return message.reply(simpleCommandResponse);
+        }ext.startsWith('/')) {
             return;
         }
 
