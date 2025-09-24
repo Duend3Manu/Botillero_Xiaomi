@@ -69,12 +69,17 @@ async function commandHandler(client, message) {
         const command = rawText.substring(1).split(' ')[0];
         console.log(`(Handler) -> Comando recibido en ${message.platform}: "${command}"`);
 
-        // Respuestas aleatorias y mención al usuario
-        const responses = ['Al tiro', 'Estamos en eso'];
-        const randomResponse = responses[Math.floor(Math.random() * responses.length)];
-        const contact = await client.getContactById(message.senderId);
-        const text = `${randomResponse} @${contact.pushname}`;
-        await client.sendMessage(message.chatId, text, { mentions: [contact.id._serialized] });
+        try {
+            // Respuestas aleatorias y mención al usuario
+            const responses = ['Al tiro', 'Estamos en eso'];
+            const randomResponse = responses[Math.floor(Math.random() * responses.length)];
+            const contact = await client.getContactById(message.senderId);
+            const text = `${randomResponse} @${contact.pushname}`;
+            await client.sendMessage(message.chatId, text, { mentions: [contact.id._serialized] });
+        } catch (e) {
+            console.error("Error al enviar la respuesta con mención:", e);
+            // No detenemos la ejecución, solo lo logeamos. El comando principal debe seguir.
+        }
 
         const simpleCommandResponse = handleSimpleCommand(command);
         if (simpleCommandResponse) {

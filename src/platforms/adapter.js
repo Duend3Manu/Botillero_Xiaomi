@@ -28,6 +28,7 @@ async function adaptWhatsappMessage(client, msg) {
                 senderName: quotedContact.pushname || quotedContact.name,
                 hasMedia: quotedMsg.hasMedia,
                 mediaType: quotedMsg.type,
+                isAnimated: quotedMsg.isAnimated,
                 downloadMedia: () => quotedMsg.downloadMedia()
             };
         } catch (e) { /* ignore */ }
@@ -95,6 +96,7 @@ async function adaptWhatsappMessage(client, msg) {
 
         hasMedia: msg.hasMedia,
         mediaType: msg.type,
+        isAnimated: msg.isAnimated,
 
         hasQuotedMsg: msg.hasQuotedMsg,
         quotedMsgInfo: richQuotedMsgInfo,

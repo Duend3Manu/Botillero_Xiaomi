@@ -3,29 +3,39 @@
 const fs = require('fs');
 const path = require('path');
 const { MessageMedia } = require('whatsapp-web.js');
+const moment = require('moment-timezone');
 
 // --- Lógica para Stickers ---
 async function handleSticker(client, message) {
-    // The message object from the adapter might have the raw message inside .raw
-    const rawMessage = message.raw || message;
-    let mediaMessage = rawMessage; // Start with the raw message
+    let mediaDownloader = null;
 
-    if (rawMessage.hasQuotedMsg) {
-        const quotedMsg = await rawMessage.getQuotedMessage();
-        if (quotedMsg.hasMedia) {
-            mediaMessage = quotedMsg;
+    // 1. Check for quoted message with media
+    if (message.hasQuotedMsg && message.quotedMsgInfo && message.quotedMsgInfo.hasMedia) {
+        const mediaType = message.quotedMsgInfo.mediaType;
+        if (['image', 'video', 'gif'].includes(mediaType)) {
+            mediaDownloader = () => message.downloadQuotedMedia();
+        }
+    } 
+    // 2. If no quoted media, check current message for media
+    else if (message.hasMedia) {
+        const mediaType = message.mediaType;
+        if (['image', 'video', 'gif'].includes(mediaType)) {
+            mediaDownloader = () => message.downloadMedia();
         }
     }
 
-    if (mediaMessage.hasMedia && (mediaMessage.type === 'image' || mediaMessage.type === 'video' || mediaMessage.type === 'gif')) {
+    if (mediaDownloader) {
         try {
-            const media = await mediaMessage.downloadMedia();
-            // Use the raw message to reply, which should be the original wwebjs message object
-            await rawMessage.reply(media, undefined, { sendMediaAsSticker: true, stickerAuthor: "Botillero", stickerName: "Creado por Botillero" });
+            const media = await mediaDownloader();
+            if (media) {
+                // The adapter provides a sendSticker function for convenience
+                await message.sendSticker(media);
+            } else {
+                message.reply("No se pudo descargar el archivo multimedia.");
+            }
         } catch (e) {
-            // Use the original adapted message for the error reply for consistency
             message.reply("Hubo un error al crear el sticker.");
-            console.error(e);
+            console.error("Error en handleSticker:", e);
         }
     } else {
         message.reply("Responde a una imagen o video, o envía uno junto al comando `!s`.");
@@ -33,9 +43,6 @@ async function handleSticker(client, message) {
 }
 
 async function handleStickerToMedia(client, message) {
-    // The message object from the adapter might have the raw message inside .raw
-    const rawMessage = message.raw || message;
-
     // Implementación con carga segura de 'sharp'
     let sharp;
     try {
@@ -46,13 +53,13 @@ async function handleStickerToMedia(client, message) {
         return message.reply("❌ Error: La función para convertir imágenes no está disponible. El administrador debe instalar la librería 'sharp'.");
     }
 
-    if (!rawMessage.hasQuotedMsg) {
+    if (!message.hasQuotedMsg || !message.quotedMsgInfo) {
         return message.reply("Para usar este comando, debes responder a un sticker.");
     }
 
-    const quotedMsg = await rawMessage.getQuotedMessage();
+    const quotedSticker = message.quotedMsgInfo;
 
-    if (!quotedMsg.hasMedia || quotedMsg.type !== 'sticker') {
+    if (!quotedSticker.hasMedia || quotedSticker.mediaType !== 'sticker') {
         return message.reply("Eso no parece ser un sticker.");
     }
 
@@ -63,10 +70,13 @@ async function handleStickerToMedia(client, message) {
     let outputPath;
 
     try {
-        const media = await quotedMsg.downloadMedia();
+        const media = await message.downloadQuotedMedia();
+        if (!media) {
+            throw new Error("No se pudo descargar el sticker citado.");
+        }
         const inputBuffer = Buffer.from(media.data, 'base64');
 
-        if (quotedMsg.isAnimated) {
+        if (quotedSticker.isAnimated) {
             outputPath = path.join(tempDir, `sticker_${Date.now()}.gif`);
             await sharp(inputBuffer, { animated: true }).gif().toFile(outputPath);
         } else {
