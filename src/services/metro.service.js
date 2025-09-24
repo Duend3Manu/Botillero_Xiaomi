@@ -80,6 +80,11 @@ async function getLatestIncidentFromTelegramChannel() {
 async function getMetroStatus() {
     try {
         let statusMessage = await pythonService.executePythonScript('metro.py');
+
+        if (!statusMessage) {
+            statusMessage = "No se pudo obtener la información del estado de la red.";
+        }
+        
         let latestIncident = await getLatestIncidentFromApi();
 
         if (!latestIncident || latestIncident.error) {
