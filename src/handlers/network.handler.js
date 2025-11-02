@@ -1,10 +1,10 @@
 // src/handlers/network.handler.js
 "use strict";
 
-const whois = require('whois');
 const dns = require('dns').promises;
 const util = require('util');
 const axios = require('axios');
+const whois = require('whois');
 
 const lookup = util.promisify(whois.lookup);
 
@@ -85,74 +85,19 @@ async function getGeoIpInfo(ip) {
     }
 }
 
-async function handleNetworkQuery(message) {
-    const query = message.body.substring(message.body.indexOf(' ') + 1).trim();
-    if (!query) {
-        return "Por favor, ingresa un dominio o IP. Ejemplo: `!net google.com`";
-    }
-
-    await message.react('⏳');
-    
-    // Si es un dominio .cl, hacemos la consulta a NIC.cl automáticamente
-    if (query.endsWith('.cl')) {
-        // Llamamos a handleNicClSearch, que ahora maneja su propia respuesta al usuario
-        return handleNicClSearch(message);
-    }
-
-    // Para otros dominios, usamos el flujo normal
-    const [whoisInfo, dnsInfo] = await Promise.all([
-        getWhoisInfo(query),
-        getDnsInfo(query)
-    ]);
-
-    let ipToLocate = null;
-    const ipRegex = /\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b/;
-    if (ipRegex.test(query)) {
-        ipToLocate = query;
-    } else {
-        const a_records = await dns.resolve4(query).catch(() => []);
-        if (a_records.length > 0) {
-            ipToLocate = a_records[0];
-        }
-    }
-    
-    const geoIpInfo = await getGeoIpInfo(ipToLocate);
-
-    let finalResponse = `*🔎 Análisis de Red para "${query}"*\n\n`;
-    finalResponse += `${whoisInfo}\n\n`;
-    finalResponse += `${dnsInfo}\n\n`;
-    if (geoIpInfo) {
-        finalResponse += `${geoIpInfo}`;
-    }
-
-    await message.react('✅');
-    return finalResponse.trim();
-}
-
-
 // --- Función para !nic (CORREGIDA Y MÁS ROBUSTA) ---
-async function handleNicClSearch(message) {
-    let domain = message.body.substring(message.body.indexOf(' ') + 1).trim().toLowerCase();
-    if (!domain) {
-        return "Por favor, ingresa un dominio .cl para consultar. Ejemplo: `!nic google.cl`";
-    }
-    if (!domain.endsWith('.cl')) {
-        domain += '.cl';
-    }
-
-    await message.react('⏳');
-
+async function getNicClInfo(domain) {
     try {
+        // Usamos latin1 porque es la codificación que usa el servidor de NIC.cl
         const rawData = await lookup(domain, { server: 'whois.nic.cl', encoding: 'latin1' });
 
         if (rawData.includes('no existe')) {
-            await message.react('❌');
             return `El dominio *${domain}* no se encuentra registrado en NIC Chile.`;
         }
         
         const parseNicCl = (data) => {
             const lines = data.split('\n');
-            const result = { 'Titular': '', 'Agente Registrador': '', 'Fecha de creación': '', 'Fecha de expiración': '', 'Servidores de Nombre': [] };
+            const result = { 'Titular': 'No disponible', 'Agente Registrador': 'No disponible', 'Fecha de creación': 'No disponible', 'Fecha de expiración': 'No disponible', 'Servidores de Nombre': [] };
             lines.forEach(line => {
                 if (line.includes(':')) {
                     const [key, ...valueParts] = line.split(':');
@@ -170,7 +115,7 @@ async function handleNicClSearch(message) {
         
         const parsedData = parseNicCl(rawData);
 
-        const reply = `
+        return `
 *🇨🇱 Información de NIC Chile para "${domain}"*
 
 - *Titular:* ${parsedData['Titular']}
@@ -182,24 +127,62 @@ async function handleNicClSearch(message) {
 ${parsedData['Servidores de Nombre'].map(ns => `- \`${ns}\``).join('\n')}
         `.trim();
 
-        await message.react('✅');
-        return reply;
-
     } catch (error) {
-        console.error("Error en handleNicClSearch:", error);
-        await message.react('❌');
-
-        // Mensaje específico para el error de conexión
-        if (error.code === 'ECONNRESET') {
-            return `😕 La conexión con el servidor de NIC.cl fue interrumpida. Esto suele ser un problema temporal del servidor de ellos. Por favor, intenta de nuevo en un minuto.`;
+        console.error("Error en getNicClInfo:", error);
+        // --- MANEJO DE ERROR MEJORADO ---
+        // Si el error es una conexión rechazada, damos un mensaje específico.
+        if (error.code === 'ECONNREFUSED' || error.code === 'ECONNRESET') {
+            return `😕 La conexión con el servidor de NIC.cl fue rechazada o interrumpida. Esto suele ser un problema temporal del servidor de ellos. Por favor, intenta de nuevo en un minuto.`;
         }
-        
-        return `No se pudo encontrar información para *${domain}*.`;
+        return `No se pudo encontrar información para *${domain}*. El servidor de NIC.cl podría no estar disponible.`;
     }
 }
 
+async function handleNetworkQuery(message) {
+    const query = message.body.substring(message.body.indexOf(' ') + 1).trim();
+    if (!query) {
+        return "Por favor, ingresa un dominio o IP. Ejemplo: `!net google.com`";
+    }
+
+    await message.react('⏳');
+    
+    // --- LÓGICA UNIFICADA ---
+    // Si es un dominio .cl, usamos la función especializada.
+    if (query.endsWith('.cl')) {
+        const nicInfo = await getNicClInfo(query);
+        await message.react('✅');
+        return message.reply(nicInfo);
+    }
+
+    // Para dominios internacionales, usamos el flujo completo.
+    const [whoisInfo, dnsInfo] = await Promise.all([
+        getWhoisInfo(query),
+        getDnsInfo(query)
+    ]);
+    let ipToLocate = null;
+    const ipRegex = /\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b/;
+    if (ipRegex.test(query)) {
+        ipToLocate = query;
+    } else {
+        const a_records = await dns.resolve4(query).catch(() => []);
+        if (a_records.length > 0) {
+            ipToLocate = a_records[0];
+        }
+    }
+    
+    const geoIpInfo = await getGeoIpInfo(ipToLocate);
+
+    let finalResponse = `*🔎 Análisis de Red para "${query}"*\n`;
+    finalResponse += `${whoisInfo}\n\n`;
+    finalResponse += `${dnsInfo}\n\n`;
+    if (geoIpInfo) {
+        finalResponse += `${geoIpInfo}`;
+    }
+
+    await message.react('✅');
+    return message.reply(finalResponse.trim());
+}
 
 module.exports = {
-    handleNetworkQuery,
-    handleNicClSearch
+    handleNetworkQuery
 };
