@@ -25,18 +25,14 @@ def main():
             )
             page = context.new_page()
             
-            print("Navegando a la URL en entorno de servidor...")
-            
             # --- CAMBIOS CLAVE PARA EVITAR TIMEOUT ---
             # 1. Aumentamos el timeout general a 60 segundos.
             # 2. Cambiamos 'networkidle' por 'domcontentloaded', que es más rápido y fiable.
             page.goto(url, wait_until='domcontentloaded', timeout=60000)
             
-            print("Página cargada. Esperando por el selector 'table.tabla-datos'...")
             # Le damos un timeout generoso para que el contenido cargue
             page.wait_for_selector('table.tabla-datos', timeout=45000)
             
-            print("¡Tabla encontrada! Obteniendo contenido...")
             content = page.content()
             browser.close()
 
