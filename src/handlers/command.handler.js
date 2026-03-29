@@ -1,235 +1,276 @@
+// src/handlers/command.handler.js (VERSIÓN OPTIMIZADA)
 "use strict";
 
-// --- Importaciones de todos los Servicios y Handlers necesarios ---
-const economyService = require('../services/economy.service');
-const leagueService = require('../services/league.service.js');
-const metroService = require('../services/metro.service');
-const nationalTeamService = require('../services/nationalTeam.service');
+const { MessageMedia } = require('../adapters/wwebjs-adapter');
+const rateLimiter = require('../services/rate-limiter.service');
+const { handleReaction } = require('../services/messaging.service');
 
-const externalService = require('../services/external.service');
-const utilityService = require('../services/utility.service.js');
+// --- Lazy Loading de Servicios ---
+// Los servicios solo se cargan cuando realmente se necesitan
+const services = {
+    get metro() { return require('../services/metro.service'); },
+    get nationalTeam() { return require('../services/nationalTeam.service'); },
+    get economy() { return require('../services/economy.service'); },
+    get horoscope() { return require('../services/horoscope.service'); },
+    get league() { return require('../services/league.service.js'); },
+    get transbank() { return require('../services/transbank.service.js'); },
+    get system() { return require('./system.handler'); },
+    get utility() { return require('./utility.handler'); },
+    get fun() { return require('./fun.handler'); },
+    get search() { return require('./search.handler'); },
+    get stateful() { return require('./stateful.handler'); },
+    get ai() { return require('./ai.handler'); },
+    get personalSearch() { return require('./personalsearch.handler'); },
+    get network() { return require('./network.handler'); },
+    get fap() { return require('./fap.handler'); },
+    get group() { return require('./group.handler'); },
+    get ruleta() { return require('./ruleta.handler'); },
+    get poringa() { return require('./poringa.handler'); },
+    get ppost() { return require('./ppost.handler'); }
+};
 
-const { handlePing } = require('./system.handler.js');
-const { handleMenu, handleClima, handleSismos, handleFeriados, handleFarmacias, handleSec, handleBus } = require('./utility.handler.js');
-const { 
-    handleSticker, handleStickerToMedia, handleCountdown, handleBotMention, 
-    handleOnce, handleSimpleCommand
-} = require('./fun.handler');
-const { handleWikiSearch, handleNews, handleGoogleSearch } = require('./search.handler');
-const { handleXvideosSearch } = require('./adult.handler');
-const { handleFapSearch } = require('./fap.handler'); // New import
+// --- Cooldowns para comandos específicos ---
+let lastTransbankRequestTimestamp = 0;
+const TRANSBANK_COOLDOWN_SECONDS = 30;
 
-const { handleAiHelp } = require('./ai.handler');
-const { handlePatenteSearch, handleTneSearch, handlePhoneSearch } = require('./personalsearch.handler.js');
-const { handleNetworkQuery } = require('./network.handler.js');
-const { handleBanner } = require('./banner.handler.js');
+// --- Helpers para comandos con lógica repetida ---
+async function handleHoroscopeCommand(client, message, serviceMethod) {
+    const signo = message.body.split(' ')[1];
+    if (!signo) {
+        return "Por favor, escribe un signo. Ej: `!horoscopo aries`";
+    }
+    
+    const result = await serviceMethod(signo);
+    await message.reply(result.text);
+    
+    if (result.imagePath) {
+        const media = MessageMedia.fromFilePath(result.imagePath);
+        await client.sendMessage(message.from, media);
+    }
+    return null; // Ya enviamos la respuesta
+}
 
-const { exec } = require('child_process'); // <--- AÑADIR ESTA LÍNEA
-const util = require('util'); // <--- AÑADIR ESTA LÍNEA
-const execPromise = util.promisify(exec); // <--- AÑADIR ESTA LÍNEA
-// --- Utilidades ---
+async function handleTransbankWithCooldown() {
+    const now = Date.now();
+    const timeSinceLastRequest = (now - lastTransbankRequestTimestamp) / 1000;
 
-const countdownCommands = ['18', 'navidad', 'añonuevo'];
+    if (timeSinceLastRequest < TRANSBANK_COOLDOWN_SECONDS) {
+        const timeLeft = Math.ceil(TRANSBANK_COOLDOWN_SECONDS - timeSinceLastRequest);
+        return `⏳ El comando !transbank está en cooldown. Por favor, espera ${timeLeft} segundos.`;
+    }
+    
+    const result = await services.transbank.getTransbankStatus();
+    lastTransbankRequestTimestamp = Date.now();
+    return result;
+}
 
-/**
- * callHandler: invoca un handler intentando ambas firmas posibles:
- *  - handler(message)
- *  - handler(client, message)
- * Si el handler no existe retorna undefined y propaga errores.
- */
-async function callHandler(fn, client, message, ...extra) {
-    if (typeof fn !== 'function') return undefined;
-    try {
-        if (fn.length >= 2) {
-            return await fn(client, message, ...extra);
+async function handleRandomCommand(client, message) {
+    const randomData = await services.utility.handleRandom();
+    
+    if (randomData.type === 'image' && randomData.media_url) {
+        try {
+            const media = await MessageMedia.fromUrl(randomData.media_url);
+            await client.sendMessage(message.from, media, { caption: randomData.caption });
+        } catch (err) {
+            console.error("Error al enviar imagen random:", err);
+            await message.reply(randomData.caption + "\n\n(No pude cargar la imagen 😢)");
         }
-        return await fn(message, ...extra);
+        return null;
+    }
+    
+    return randomData.caption;
+}
+
+async function handleStickerToImage(client, message) {
+    if (!message.hasQuotedMsg) {
+        return 'Debes responder a un sticker para convertirlo en imagen.';
+    }
+
+    const quotedMsg = await message.getQuotedMessage();
+    if (!quotedMsg || !quotedMsg.hasMedia) {
+        return 'El mensaje al que respondiste no tiene media.';
+    }
+    if (quotedMsg.type !== 'sticker') {
+        return 'El mensaje al que respondiste no es un sticker.';
+    }
+
+    try {
+        const stickerMedia = await quotedMsg.downloadMedia();
+        // Enviamos con sendAsPhoto:true para que llegue como imagen visible, no como sticker
+        await message.reply(stickerMedia, undefined, {
+            sendAsPhoto: true,
+            caption: '🖼️ ¡Aquí tienes tu sticker como imagen!'
+        });
+        return null;
     } catch (err) {
-        throw err;
+        console.error('(toimg) -> Error:', err.message);
+        return '❌ No pude convertir el sticker a imagen.';
     }
 }
 
+
+// --- Mapa de Alias ---
+const commandAliases = {
+    'ligatabla': 'tabla',
+    'ligapartidos': 'prox',
+    'selecciontabla': 'tclasi',
+    'seleccionpartidos': 'clasi',
+    'tel': 'num',
+    'patente': 'pat',
+    'net': 'whois',
+    'comandos': 'menu',
+    'secrm': 'sec',
+    'pase': 'tne',
+    'precio': 'oferta',
+    'desc': 'oferta',
+    'producto': 'oferta'
+};
+
+// --- Command Map (Reemplaza el switch gigante) ---
+const commandMap = {
+    // Liga/Deportes
+    'tabla': () => services.league.getLeagueTable(),
+    'prox': () => services.league.getLeagueUpcomingMatches(),
+    'partidos': () => services.league.getMatchDaySummary(),
+    'tclasi': () => services.nationalTeam.getQualifiersTable(),
+    'clasi': () => services.nationalTeam.getQualifiersMatches(),
+    'liga': () => services.league.getCopaLigaMatches(),
+    'cliga': () => services.league.getCopaLigaGroups(),
+    
+    // Servicios públicos
+    'metro': () => services.metro.getMetroStatus(),
+    'valores': () => services.economy.getEconomicIndicators(),
+    'trstatus': () => services.transbank.getTransbankStatus(),
+    'transbank': () => handleTransbankWithCooldown(),
+    'bancos': (_, msg) => services.utility.handleBancos(msg),
+    
+    // Sistema y utilidades
+    'ping': (_, msg) => services.system.handlePing(msg),
+    'feriados': (_, msg) => services.utility.handleFeriados(msg),
+    'far': (_, msg) => services.utility.handleFarmacias(msg),
+    'clima': (_, msg) => services.utility.handleClima(msg),
+    'sismos': () => services.utility.handleSismos(),
+    'bus': (client, msg) => services.utility.handleBus(msg, client),
+    'sec': (_, msg) => services.utility.handleSec(msg),
+    'menu': async (_, msg) => {
+        const { getMainMenuKeyboard } = require('./menu.handler');
+        await msg.reply('🤖 *Menú Principal — Botillero*\n\nSelecciona una categoría:', undefined, {
+            parse_mode: 'Markdown',
+            reply_markup: getMainMenuKeyboard()
+        });
+        return null; // Ya enviamos el mensaje directamente, no retornar texto
+    },
+    
+    // Búsquedas
+    'wiki': (_, msg) => services.search.handleWikiSearch(msg),
+    'noticias': (_, msg) => services.search.handleNews(msg),
+    'g': (_, msg) => services.search.handleGoogleSearch(msg),
+    'oferta': (_, msg) => services.search.handleDealsSearch(msg),
+    'pat': (_, msg) => services.personalSearch.handlePatenteSearch(msg),
+    
+    // Diversión
+    's': (client, msg) => services.fun.handleSticker(client, msg),
+    'toimg': (client, msg) => handleStickerToImage(client, msg),
+    
+    // Búsquedas personales
+    'num': (client, msg) => services.personalSearch.handlePhoneSearch(client, msg),
+    'tne': (_, msg) => services.personalSearch.handleTneSearch(msg),
+    
+    // Red
+    'whois': (_, msg) => services.network.handleNetworkQuery(msg),
+    'nic': (_, msg) => services.network.handleNicClSearch(msg),
+    
+    // FAP y grupos
+    'fap': (client, msg) => services.fap.handleFapSearch(client, msg),
+    'todos': (client, msg) => services.group.handleTagAll(client, msg),
+    
+    // Poringa / Scraper de imágenes
+    'poringa': (client, msg) => services.poringa.handlePoringaSearch(client, msg),
+    'ppost':   (client, msg) => services.ppost.handlePpostSearch(client, msg),
+
+    // Ruleta y puntos
+    'ruleta': (client, msg) => services.ruleta.handleRuleta(client, msg),
+    'puntos': (client, msg) => services.ruleta.handlePuntos(client, msg),
+    'ranking': (client, msg) => services.ruleta.handleRanking(client, msg),
+    
+    // ID del chat
+    'id': (_, msg) => {
+        console.log('ID de este chat:', msg.from);
+        msg.reply(`ℹ️ El ID de este chat es:\n${msg.from}`);
+        return null;
+    }
+};
+
+// --- Lista de comandos válidos ---
+const countdownCommands = ['18', 'navidad', 'añonuevo'];
+
+const validCommands = new Set([
+    ...countdownCommands,
+    ...Object.keys(commandMap),
+    ...Object.keys(commandAliases)
+]);
+
+// --- Regex Pre-compilada ---
+// IMPORTANTE: Usamos ^ para que solo matchee al INICIO del mensaje.
+// Esto evita falsos positivos con URLs que contengan palabras como /noticias, /tabla, etc.
+const commandRegex = new RegExp(
+    `^\\s*([!/])(${[...validCommands].sort((a, b) => b.length - a.length).join('|')})\\b`, 
+    'i'
+);
+
+// --- Handler Principal ---
 async function commandHandler(client, message) {
+    const body = message.body.trim();
+    
+    // Detectar comando usando regex optimizada (solo al inicio del mensaje)
+    let command = null;
+    const match = body.match(commandRegex);
+    
+    if (match) {
+        command = match[2].toLowerCase();
+    }
+
+    // Easter eggs (menciones al bot)
+    if (!command) {
+        const lowerBody = body.toLowerCase();
+        if (/\b(once|onse|11)\b/.test(lowerBody)) {
+            return services.fun.handleOnce(client, message);
+        }
+        return;
+    }
+
+    // Comandos de countdown
+    if (countdownCommands.includes(command)) {
+        const replyMessage = services.fun.handleCountdown(command);
+        return message.reply(replyMessage);
+    }
+
+    // Resolver alias
+    const resolvedCommand = commandAliases[command] || command;
 
     try {
-        // Verificación de seguridad: si el mensaje no es válido o no tiene texto, lo ignoramos.
-        if (!message || !message.text) {
-            return;
-        }
+        await handleReaction(message, (async () => {
+            console.log(`(Handler) -> Comando recibido: "${command}"`);
 
-        const rawText = message.text.toLowerCase().trim();
-
-        // --- Menciones y comandos especiales sin prefijo ---
-        // if (rawText.includes('bot')) return handleBotMention(client, message); // <-- CAMBIO 2: Se pasa 'client'
-        
-
-        // Ignoramos mensajes que no son comandos con prefijo
-        if (!rawText.startsWith('!') && !rawText.startsWith('/')) {
-            return;
-        }
-
-        const command = rawText.substring(1).split(' ')[0];
-        console.log(`(Handler) -> Comando recibido en ${message.platform}: "${command}"`);
-
-        try {
-            // Respuestas aleatorias y mención al usuario
-            const responses = ['Al tiro', 'Estamos en eso'];
-            const randomResponse = responses[Math.floor(Math.random() * responses.length)];
-            const contact = await client.getContactById(message.senderId);
-            const text = `${randomResponse} @${contact.pushname}`;
-            await client.sendMessage(message.chatId, text, { mentions: [contact.id._serialized] });
-        } catch (e) {
-            console.error("Error al enviar la respuesta con mención:", e);
-            // No detenemos la ejecución, solo lo logeamos. El comando principal debe seguir.
-        }
-
-        const simpleCommandResponse = handleSimpleCommand(command);
-        if (simpleCommandResponse) {
-            return message.reply(simpleCommandResponse);
-        }
-
-        if (countdownCommands.includes(command)) {
-            return message.reply(handleCountdown(command));
-        }
-
-        // --- Manejo del resto de comandos ---
-        let replyMessage; // <-- CAMBIO 5: Se define replyMessage aquí
-        switch (command) {
-            // Comandos de Fútbol y Deportes
-            case 'tabla': case 'ligatabla':
-                await message.showLoading();
-                return message.reply(await leagueService.getLeagueTable());
-            case 'prox': case 'ligapartidos':
-                await message.showLoading();
-                return message.reply(await leagueService.getLeagueUpcomingMatches());
-            case 'partidos':
-                await message.showLoading();
-                return message.reply(await leagueService.getMatchDaySummary());
-            case 'tclasi': case 'selecciontabla':
-                return message.reply(await nationalTeamService.getQualifiersTable());
-            case 'clasi': case 'seleccionpartidos':
-                return message.reply(await nationalTeamService.getQualifiersMatches());
-case 'mundial':
-                await message.showLoading(); // Usamos tu función nativa de "cargando"
-                try {
-                    const { stdout, stderr } = await execPromise('python ./scripts/mundial.py');
-                    if (stderr) {
-                        console.error(`(Mundial Script) stderr: ${stderr}`);
-                        return message.reply('❌ Ocurrió un error en el script de Python.');
-                    }
-                    // Si todo sale bien, stdout tiene el texto formateado
-                    return message.reply(stdout);
-                } catch (error) {
-                    console.error(`(Mundial Script) exec error: ${error}`);
-                    return message.reply('❌ No se pudo ejecutar el script del mundial. Revisa la consola de errores del bot.');
-                }
-            // ------------------------------------
-            // Comandos de Servicios y APIs Externas
-            case 'metro':
-                await message.showLoading();
-                const metroResult = await metroService.getMetroStatus();
-                if (metroResult.type === 'video' && message.platform === 'whatsapp') {
-                    return message.sendAnimation(metroResult.path, metroResult.caption);
-                }
-                return message.reply(metroResult.content);
-            case 'random':
-                await message.showLoading();
-                const randomInfo = await utilityService.getRandomInfo();
-                if (typeof randomInfo === 'object' && randomInfo.type === 'image') {
-                    return message.sendImage(randomInfo.url, randomInfo.caption);
-                }
-                return message.reply(randomInfo);
-            case 'valores':
-                return message.reply(await economyService.getEconomicIndicators());
+            const handler = commandMap[resolvedCommand];
             
-            case 'bencina':
-                return message.reply(await externalService.getBencinaData(message.args[0]));
-            case 'bolsa':
-                return message.reply(await externalService.getBolsaData());
-                
-            // Comandos de Búsqueda Personal
-            case 'tel': case 'num': return handlePhoneSearch(client, message);
-            case 'pat': case 'patente': return handlePatenteSearch(message);
-            case 'tne': return handleTneSearch(message);
+            if (!handler) {
+                console.warn(`Comando no encontrado en el mapa: "${resolvedCommand}"`);
+                return;
+            }
 
-            // Comandos de Red y Banners
-            case 'net': case 'whois': case 'scan': return handleNetworkQuery(message);
-            case 'banner': return handleBanner(message);
-
-            // Comandos de Diversión
-            case 's': return handleSticker(client, message);
-            case 'toimg': case 'imagen': return handleStickerToMedia(client, message); // <-- CAMBIO 6: Se pasa 'client'
+            const replyMessage = await handler(client, message);
             
-            
-            // Comandos de Búsqueda General
-            case 'wiki': return message.reply(await handleWikiSearch(message));
-            case 'noticias': return message.reply(await handleNews());
-            case 'g': return message.reply(await handleGoogleSearch(message));
-            
-            // Comandos de Utilidad y Sistema
-            case 'menu':
-            case 'help':
-                return message.reply(handleMenu());
-            case 'ping':
-                replyMessage = await callHandler(handlePing, client, message);
-                break;
-            case 'feriados':
-                // intenta handler local si existe, sino el servicio
-                if (typeof handleFeriados === 'function') {
-                    replyMessage = await callHandler(handleFeriados, client, message);
-                } else if (utilityService && typeof utilityService.getFeriados === 'function') {
-                    replyMessage = await utilityService.getFeriados();
-                } else {
-                    console.warn('[command.handler] handleFeriados no encontrada; revisa exports');
-                    replyMessage = 'Función feriados no disponible. Avísale al administrador.';
-                }
-                break;
-            case 'far':
-                replyMessage = await callHandler(handleFarmacias, client, message);
-                break;
-            case 'clima':
-                replyMessage = await callHandler(handleClima, client, message);
-                break;
-            case 'sismos':
-                replyMessage = await callHandler(handleSismos, client, message);
-                break;
-            case 'bus':
-                // handleBus puede tener firma (client, message) o (message, client) - llamarlo directamente si implementado
-                // intentamos callHandler y, si devuelve undefined, llamar legacy
-                try {
-                    const res = await callHandler(handleBus, client, message, client);
-                    if (res !== undefined) return res;
-                } catch (e) {
-                    // si falla, intentar la firma legacy
-                    try { return await handleBus(message, client); } catch (err) { throw err; }
-                }
-                break;
-            case 'sec': case 'secrm':
-                replyMessage = await callHandler(handleSec, client, message);
-                break;
-            
-            case 'xv':
-                return message.reply(await handleXvideosSearch(message));
-            
-            case 'fap': // New case for !fap command
-                return handleFapSearch(client, message);
-            
-            case 'ayuda': return message.reply(await handleAiHelp(message));
-            
-            case 'id': return message.reply(`ℹ️ El ID de este chat es:
-${message.chatId}`);
-
-            default:
-                break;
-        }
-
-        // Si se llegó aquí, significa que se encontró un handler y se ejecutó
-        if (replyMessage) {
-            return message.reply(replyMessage);
-        }
-    } catch (err) {
-        console.error("[command.handler] Error inesperado:", err);
-        message.reply("Ocurrió un error inesperado al procesar tu comando.");
+            // Solo hacer reply si el handler retornó un STRING.
+            // Si retornó null/undefined → ya envió el mensaje directamente.
+            // Si retornó un objeto (Message de Telegram) → también ya lo envió, ignorar.
+            if (replyMessage && typeof replyMessage === 'string') {
+                await message.reply(replyMessage);
+            }
+        })());
+    } catch (error) {
+        console.error(`Error al procesar el comando "${command}":`, error);
+        await message.reply(`Hubo un error al procesar el comando \`!${command}\`.`);
     }
 }
 

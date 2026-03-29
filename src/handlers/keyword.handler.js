@@ -1,27 +1,20 @@
 "use strict";
 
-async function handleKeywords(message) {
-    const command = message.body.toLowerCase();
+const funHandler = require('./fun.handler');
 
-    if (command.includes('huaso')) {
-        await message.react('😅');
-        await message.reply('De seguro estamos hablando del huaso Fabián.');
-    } else if (command.includes('borracho') || command.includes('watusi') || command.includes('watusy')) {
-        await message.react('😅');
-        await message.reply('😂😂😂😂😂😂😂 ahí te hablan Diego Garrido.');
-    } else if (command.includes('boliviano') || command.includes('bolivia')) {
-        await message.react('😅');
-        await message.reply('😂😂😂😂😂😂😂 ahí te hablan Jesus.');
-    } else if (command.includes('chanero') || command.includes('chaneros')) {
-        await message.react('😅');
-        await message.reply('😂😂😂😂😂😂😂 ahí te hablan Bastian.');
-    } else if (command.includes('macabeo') || command.includes('casorio')) {
-        await message.react('😅');
-        await message.reply('😂😂😂😂😂😂😂 ahí te hablan Luis.');
-    } else if (command.includes('nuco')) {
-        await message.react('🤡');
-        await message.reply('Tu hermana se lo come sin truco');
+/**
+ * Maneja mensajes que no son comandos pero que contienen palabras clave.
+ * @param {object} message - El objeto de mensaje adaptado.
+ */
+async function keywordHandler(message) {
+    const lowerCaseBody = (message.text || '').toLowerCase();
+
+    if (lowerCaseBody.includes('bot')) {
+        await funHandler.handleBotMention(message);
+    } else if (lowerCaseBody.includes('once')) {
+        await funHandler.handleOnce(message);
     }
+    // Puedes añadir más palabras clave aquí con 'else if'
 }
 
-module.exports = handleKeywords;
+module.exports = keywordHandler;

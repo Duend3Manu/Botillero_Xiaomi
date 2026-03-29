@@ -1,127 +1,193 @@
+/**
+ * Servicio mejorado de Metro con análisis inteligente
+ * Usa IA para sugerir rutas alternativas cuando hay problemas
+ */
 "use strict";
 
-const pythonService = require('./python.service'); 
-const axios = require('axios');
-const moment = require('moment-timezone');
-const cheerio = require('cheerio');
-const path = require('path');
-const fs = require('fs');
+const pythonService = require('./python.service');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
+const rateLimiter = require('./rate-limiter.service');
+
+const METRO_SCRIPT_NAME = 'metro.py';
+// Inicializamos solo si hay key, para evitar errores si no está configurada
+const genAI = process.env.GEMINI_API_KEY ? new GoogleGenerativeAI(process.env.GEMINI_API_KEY) : null;
+
+// Variables para caché (evita ejecutar Python/IA innecesariamente)
+let metroCache = null;
+let lastUpdate = 0;
+const CACHE_TTL = 60 * 1000; // 1 minuto de caché
+
+let monitoringInterval = null;
+let lastAlertState = false; // false = normal, true = en alerta (para no repetir mensajes)
 
 /**
- * PRIORIDAD 1: Obtiene la última alerta desde la API del canal de WhatsApp.
- * @returns {Promise<{text: string, time: string}|{error: boolean}|null>}
+ * Obtiene el estado bruto del metro desde el script Python
  */
-async function getLatestIncidentFromApi() {
+async function getMetroStatusRaw() {
     try {
-        const apiUrl = 'https://consultappu-wahaapi.f7xnya.easypanel.host/api/messages?limit=1&ttl=120';
-        const response = await axios.get(apiUrl, { timeout: 4000 });
-
-        if (response.data && response.data.messages && response.data.messages.length > 0) {
-            const lastMessage = response.data.messages[0];
-            const messageDateUtc = moment.utc(lastMessage.dateUtc);
-            const now = moment.utc();
-
-            if (now.diff(messageDateUtc, 'hours') < 2) {
-                const messageTimeLocal = moment(lastMessage.dateLocal).tz('America/Santiago').format('HH:mm');
-                return {
-                    source: 'Canal de Alertas',
-                    text: lastMessage.text,
-                    time: messageTimeLocal
-                };
-            }
-        }
-        return null;
-    } catch (error) {
-        console.error("API de alertas de WhatsApp no disponible:", error.message);
-        return { error: true };
-    }
-}
-
-/**
- * PRIORIDAD 2 (PLAN B): Obtiene el último mensaje del canal público de Telegram.
- * @returns {Promise<{text: string, time: string}|null>}
- */
-async function getLatestIncidentFromTelegramChannel() {
-    try {
-        const telegramUrl = 'https://t.me/s/metrosantiagoalertas';
-        const { data } = await axios.get(telegramUrl, { timeout: 4000 });
-        const $ = cheerio.load(data);
+        console.log(`(Servicio Metro) -> Ejecutando ${METRO_SCRIPT_NAME}...`);
+        const result = await pythonService.executeScript(METRO_SCRIPT_NAME);
         
-        const lastMessage = $('.tgme_widget_message_wrap').last();
-        if (lastMessage.length === 0) return null;
-
-        const messageText = lastMessage.find('.tgme_widget_message_text').text().trim();
-        const messageDateStr = lastMessage.find('time.time').attr('datetime');
-
-        if (!messageText || !messageDateStr) return null;
-        
-        const messageDate = moment.utc(messageDateStr);
-        const now = moment.utc();
-
-        if (now.diff(messageDate, 'hours') < 2) {
-            const messageTimeLocal = messageDate.tz('America/Santiago').format('HH:mm');
-            return {
-                source: 'Canal de Telegram',
-                text: messageText,
-                time: messageTimeLocal
-            };
+        if (result.code !== 0) {
+            console.error(`Error al ejecutar metro.py: ${result.stderr}`);
+            return null;
         }
-        return null;
+        
+        return result.stdout;
     } catch (error) {
-        console.error("Error al obtener datos del canal de Telegram:", error.message);
+        console.error("Error en el servicio de Metro:", error.message);
         return null;
     }
 }
 
 /**
- * Obtiene el estado completo de la red de Metro, probando múltiples fuentes de alertas.
- * @returns {Promise<{type: 'text'|'video', content?: string, path?: string, caption?: string}>}
+ * Genera recomendaciones inteligentes basadas en el estado del metro
+ */
+async function generateMetroAdvice(metroStatus) {
+    if (!genAI) {
+        return null;
+    }
+
+    try {
+        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+
+        const prompt = `
+Eres "Botillero", un asistente inteligente de Metro. Analiza el siguiente estado del Metro de Santiago y da CONSEJO CORTO y PRÁCTICO.
+
+Estado actual del Metro:
+${metroStatus}
+
+Tu tarea:
+1. Si TODO está normal: Responde "✅ Metro operando normal, compa."
+2. Si hay PROBLEMAS: Identifica qué líneas están fallando
+3. Da UNA alternativa de ruta rápida (máximo 1-2 líneas de recomendación)
+4. Usa lenguaje coloquial chileno
+5. Responde SOLO el consejo, sin explicaciones adicionales
+6. Máximo 2 líneas
+
+Ejemplo de respuesta:
+"⚠️ Línea 1 con delays. Usa L4 hacia Mapocho, luego L2 a Puente Cal y Canto."
+        `;
+
+        const result = await model.generateContent(prompt);
+        const response = await result.response;
+        return response.text();
+    } catch (error) {
+        console.error('Error al generar consejo del metro:', error.message);
+        return null;
+    }
+}
+
+/**
+ * Función principal mejorada de Metro
  */
 async function getMetroStatus() {
+    // 1. Revisar caché: Si tenemos datos recientes (menos de 1 min), los devolvemos directo
+    if (metroCache && (Date.now() - lastUpdate < CACHE_TTL)) {
+        return metroCache;
+    }
+
     try {
-        let statusMessage = await pythonService.executePythonScript('metro.py');
-
-        if (!statusMessage) {
-            statusMessage = "No se pudo obtener la información del estado de la red.";
-        }
+        // Primero obtener el estado bruto
+        const metroStatus = await getMetroStatusRaw();
         
-        let latestIncident = await getLatestIncidentFromApi();
-
-        if (!latestIncident || latestIncident.error) {
-            console.log("(Servicio Metro) -> API de WhatsApp falló, intentando con Canal de Telegram...");
-            latestIncident = await getLatestIncidentFromTelegramChannel();
+        if (!metroStatus) {
+            return "⚠️ No pude obtener el estado del metro en este momento.";
         }
 
-        const isOk = statusMessage.includes("Toda la red se encuentra disponible");
-        const videoPath = path.join(__dirname, '..', '..', 'mp3', 'metro.mp4');
+        let response = metroStatus;
 
-        if (isOk && !latestIncident && fs.existsSync(videoPath)) {
-            // Si todo está OK, no hay alertas y el video existe, enviamos el video.
-            return {
-                type: 'video',
-                path: videoPath,
-                caption: `✅ *¡Buenas noticias!* ✅\n\n${statusMessage}`
-            };
-        } else {
-            // Si hay un problema o una alerta, construimos el mensaje de texto.
-            if (latestIncident) {
-                statusMessage += `\n\n--------------------\n`;
-                statusMessage += `🚨 *ÚLTIMA ALERTA (${latestIncident.source} - ${latestIncident.time} hrs):*\n\n`;
-                statusMessage += latestIncident.text;
+        // Si hay problemas detectados y no estamos en cooldown, agregar análisis con IA
+        const lowerStatus = metroStatus.toLowerCase();
+        const errorKeywords = ['problema', 'delay', 'suspendido', 'cierre', 'retraso', 'falla', 'interrupción', 'cerrada', 'parcial'];
+        
+        if (errorKeywords.some(keyword => lowerStatus.includes(keyword))) {
+            
+            const limit = rateLimiter.tryAcquire();
+            if (limit.success && genAI) {
+                try {
+                    const advice = await generateMetroAdvice(metroStatus);
+                    if (advice) {
+                        response += `\n\n💡 *Consejo:* ${advice}`;
+                    }
+                } catch (error) {
+                    console.error('Error al generar consejo (no crítico):', error.message);
+                    // Continuar sin consejo, no es crítico
+                }
             }
-            return {
-                type: 'text',
-                content: statusMessage
-            };
         }
 
+        // Guardamos en caché antes de retornar
+        metroCache = response;
+        lastUpdate = Date.now();
+
+        return response;
     } catch (error) {
-        console.error("Error al obtener el estado del Metro:", error);
-        return { 
-            type: 'text', 
-            content: "No se pudo obtener el estado del Metro en este momento." 
-        };
+        console.error("Error en getMetroStatus:", error.message);
+        return "⚠️ No pude obtener el estado del metro en este momento.";
     }
 }
 
-module.exports = { getMetroStatus };
+/**
+ * Inicia el monitoreo automático del Metro en segundo plano.
+ * @param {import('whatsapp-web.js').Client} client - Cliente de WhatsApp
+ * @param {string} [chatId] - (Opcional) ID específico. Si se omite, envía a todos los grupos.
+ */
+function startMetroMonitoring(client, chatId = null) {
+    if (monitoringInterval) clearInterval(monitoringInterval);
+    
+    console.log(`(Metro) -> Iniciando monitoreo automático...`);
+    
+    // Revisar cada 5 minutos (300000 ms)
+    monitoringInterval = setInterval(async () => {
+        const status = await getMetroStatusRaw();
+        if (!status) return;
+        
+        const lowerStatus = status.toLowerCase();
+        // Detectar palabras clave de cierre crítico
+        const isClosed = lowerStatus.includes('cerrada') || lowerStatus.includes('cierre total') || lowerStatus.includes('suspendido');
+        
+        let messageToSend = null;
+
+        if (isClosed && !lastAlertState) {
+            // ESTADO: CRÍTICO (Nuevo) -> Enviamos alerta
+            lastAlertState = true;
+            messageToSend = `🚨 *ALERTA DE METRO* 🚨\n\nSe ha detectado un cierre o suspensión en la red:\n\n${status}`;
+            
+            // Intentar agregar consejo IA para rutas alternativas
+            if (genAI) {
+                try {
+                    const advice = await generateMetroAdvice(status);
+                    if (advice) messageToSend += `\n\n💡 *Consejo:* ${advice}`;
+                } catch (e) {}
+            }
+
+        } else if (!isClosed && lastAlertState) {
+            // ESTADO: NORMAL (Recuperado) -> Avisamos que pasó el peligro
+            lastAlertState = false;
+            messageToSend = `✅ *ALERTA FINALIZADA*\n\nEl estado del Metro parece haberse normalizado (ya no se detectan cierres).`;
+        }
+        
+        // Enviar el mensaje si corresponde
+        if (messageToSend) {
+            if (chatId) {
+                await client.sendMessage(chatId, messageToSend);
+            } else {
+                // Enviar a todos los grupos donde está el bot
+                try {
+                    const chats = await client.getChats();
+                    const groups = chats.filter(c => c.isGroup);
+                    for (const group of groups) {
+                        await client.sendMessage(group.id._serialized, messageToSend);
+                    }
+                    console.log(`(Metro) -> Alerta enviada a ${groups.length} grupos.`);
+                } catch (e) {
+                    console.error('(Metro) -> Error enviando alertas:', e);
+                }
+            }
+        }
+
+    }, 5 * 60 * 1000); 
+}
+
+module.exports = { getMetroStatus, startMetroMonitoring };

@@ -1,0 +1,20 @@
+# pyrightconfig.json para configuración avanzada de Pylance
+{
+    "typeCheckingMode": "basic",
+    "exclude": [
+        "**/__pycache__",
+        ".venv",
+        "node_modules"
+    ],
+    "stubPath": "",
+    "typeshedPath": "",
+    "venvPath": ".venv",
+    "pythonVersion": "3.11",
+    "reportMissingImports": false,
+    "reportOptionalMemberAccess": false,
+    "reportAttributeAccessIssue": false,
+    "reportUnusedImport": true,
+    "reportUnusedVariable": true,
+    "reportGeneralTypeIssues": true,
+    "reportPrivateUsage": true
+}

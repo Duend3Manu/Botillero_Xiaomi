@@ -1,56 +1,40 @@
 // src/services/messaging.service.js
 "use strict";
 
-const fs = require('fs');
-const path = require('path');
-
 /**
- * Lee la playlist local y elige una canción al azar.
- * @returns {object|null}
+ * Intenta reaccionar a un mensaje, ignorando errores si falla.
+ * @param {import('whatsapp-web.js').Message} message El objeto del mensaje.
+ * @param {string} reaction El emoji para reaccionar.
  */
-function getRandomTrackFromLocalPlaylist() {
+async function tryReact(message, reaction) {
     try {
-        // Asumiendo que tendrás una carpeta 'data' con este archivo
-        const playlistPath = path.join(__dirname, '..', '..', 'data', 'playlist_local.json');
-        if (!fs.existsSync(playlistPath)) {
-            console.warn("Advertencia: No se encontró el archivo playlist_local.json. El mensaje de carga no mostrará canciones.");
-            return null;
-        }
-        const playlistData = fs.readFileSync(playlistPath, 'utf-8');
-        const playlist = JSON.parse(playlistData);
-
-        if (!playlist || playlist.length === 0) {
-            return null;
-        }
-        const randomIndex = Math.floor(Math.random() * playlist.length);
-        return playlist[randomIndex];
-
+        await message.react(reaction);
     } catch (error) {
-        console.error("Error al leer la playlist local:", error.message);
-        return null;
+        // Ignora el error de reacción, pero lo registra como advertencia.
+        console.warn(`(MessagingService) -> No se pudo reaccionar con ${reaction}: ${error.message}`);
     }
 }
 
 /**
- * Envía un mensaje de "procesando" con una pista de la playlist local (solo texto).
- * @param {import('whatsapp-web.js').Message} message El objeto del mensaje original.
+ * Maneja el ciclo de vida de las reacciones para un comando.
+ * @param {import('whatsapp-web.js').Message} message El objeto del mensaje.
+ * @param {Promise<any>} commandPromise La promesa que representa la ejecución del comando.
  */
-async function sendLoadingMessage(message) {
-    try {
-        const track = getRandomTrackFromLocalPlaylist();
+async function handleReaction(message, commandPromise) {
+    // UX: Solo mostramos el reloj si la operación tarda más de 500ms
+    // Esto evita el "parpadeo" de reacciones en comandos instantáneos (como !menu)
+    const loadingTimeout = setTimeout(() => tryReact(message, '⏳'), 500);
 
-        if (track && track.nombre && track.url) {
-            const textMessage = `Procesando tu solicitud... ⏳\n\n_Mientras esperas, dale una escuchada a esto:_\n\n🎶 *${track.nombre}* - ${track.artistas}\n🔗 ${track.url}`;
-            await message.reply(textMessage);
-        } else {
-            await message.reply("Procesando tu solicitud... ⏳");
-        }
+    try {
+        await commandPromise;
+        clearTimeout(loadingTimeout); // Cancelamos el reloj si terminó rápido
+        await tryReact(message, '✅');
     } catch (error) {
-        console.error("Error al generar el mensaje de carga:", error.message);
-        await message.reply("Procesando tu solicitud... ⏳");
+        clearTimeout(loadingTimeout);
+        await tryReact(message, '❌');
+        // El error se relanza para que el manejador principal lo capture y envíe el mensaje de error.
+        throw error;
     }
 }
 
-module.exports = {
-    sendLoadingMessage
-};
+module.exports = { handleReaction, tryReact };

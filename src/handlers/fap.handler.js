@@ -1,7 +1,5 @@
 "use strict";
 
-const axios = require('axios');
-const FormData = require('form-data');
 const { spawn } = require('child_process'); // Importar spawn
 const path = require('path'); // Importar path
 
@@ -11,32 +9,35 @@ const path = require('path'); // Importar path
  * @param {import('whatsapp-web.js').Message} message - El objeto del mensaje de WhatsApp.
  */
 async function handleFapSearch(client, message) {
-    const searchTerm = message.body.slice(5).trim();
-    const senderId = message.author || message.from; // Use message.author for groups, message.from for direct messages
+    // Usamos Regex para eliminar el comando (!fap o /fap) sin importar mayúsculas
+    const searchTerm = message.body.replace(/^([!/])fap/i, '').trim();
 
     if (!searchTerm) {
         await client.sendMessage(message.from, `Por favor ingresa un término de búsqueda después de !fap`);
-        await message.react('❌');
+        try { await message.react('❌'); } catch (e) {}
         return;
     }
 
-    await message.react('⏳');
+    try { await message.react('⏳'); } catch (e) {}
     try {
         const pythonScriptPath = path.join(__dirname, '..', '..', 'scripts', 'python', 'fap_search.py');
         const pythonProcess = spawn('python', [pythonScriptPath, searchTerm]);
 
         let scriptOutput = '';
+        let scriptError = '';
+
         pythonProcess.stdout.on('data', (data) => {
             scriptOutput += data.toString();
         });
 
         pythonProcess.stderr.on('data', (data) => {
-            console.error(`stderr from python script: ${data}`);
+            scriptError += data.toString();
         });
 
         await new Promise((resolve, reject) => {
             pythonProcess.on('close', (code) => {
                 if (code !== 0) {
+                    console.error(`Python stderr: ${scriptError}`);
                     return reject(new Error(`Python script exited with code ${code}`));
                 }
                 resolve();
@@ -46,16 +47,20 @@ async function handleFapSearch(client, message) {
             });
         });
 
+        if (!scriptOutput.trim()) {
+            throw new Error("El script de Python no devolvió datos.");
+        }
+
         const result = JSON.parse(scriptOutput);
         const responseText = result.text;
 
         await client.sendMessage(message.from, responseText);
-        await message.react('✅');
+        try { await message.react('✅'); } catch (e) {}
 
     } catch (error) {
         console.error('Error al realizar la búsqueda en Fapello (llamando a Python):', error);
         await client.sendMessage(message.from, `⚠️ Hubo un error al buscar en Fapello. Por favor, intenta nuevamente más tarde.`);
-        await message.react('❌');
+        try { await message.react('❌'); } catch (e) {}
     }
 }
 

@@ -39,15 +39,11 @@ client.on('ready', () => {
     console.log('¡Cliente de WhatsApp conectado y listo para la acción!');
 });
 
-// --- MANEJADOR DE MENSAJES CON ADAPTADOR ---
+// --- MANEJADOR DE MENSAJES ---
 client.on('message', async (message) => {
     try {
-        const adaptedMessage = await adaptWhatsappMessage(client, message);
-        
-        if (adaptedMessage) {
-            await keywordHandler(adaptedMessage);
-            await commandHandler(client, adaptedMessage);
-        }
+        await keywordHandler(message);
+        await commandHandler(client, message);
     } catch (error) {
         console.error("Error al procesar el mensaje de WhatsApp:", error);
     }

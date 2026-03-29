@@ -1,5 +1,21 @@
+# Dependencias de Node.js
 node_modules/
-.wwebjs_auth/*
-!.wwebjs_auth/.gitignore
+
+# Archivos de entorno
+.env
+
+# Autenticación y caché de WhatsApp Web JS
+.wwebjs_auth/
 .wwebjs_auth/session
 .wwebjs_cache/
+
+# Bases de datos locales
+messages.db
+
+# Entorno virtual de Python
+.venv/
+
+# Archivos compilados de Python
+__pycache__/
+*.pyc
+*.log
