@@ -230,53 +230,9 @@ function handleCountdown(command) {
 }
 
 const frases = [
-    'Dejame piola',
-    '¿Qué weá querí?',
-    'Callao',
-    '¿Que onda compadre? ¿como estai? ¿te vine a molestar yo a ti? dejame piola, tranquilo ¿Que wea queri?',
-    'Jajaja, ya te cache, puro picarte a choro no más, anda a webiar al paloma pulgón qliao.',
-    'Lo siento, pero mis circuitos de humor están sobrecargados en este momento. ¡Beep boop! 😄',
-    'Te diré lo que el profesor Rossa dijo una vez: "¿Por qué no te vay a webiar a otro lado?"',
-    '¡Error 404: Sentido del humor no encontrado! 😅',
-    'No soy un bot, soy una IA con estilo. 😎',
-    '¡Atención, soy un bot de respuesta automática! Pero no puedo hacer café... aún. ☕',
-    'Eso es lo que un bot diría. 🤖',
-    '¡Oh no, me has descubierto! Soy un bot maestro del disfraz. 😁',
-    'Parece que llegó el comediante del grupo. 🤣',
-    'El humor está de moda, y tú eres el líder. 😄👑',
-    'Con ese humor, podrías competir en el festival de Viña del Mar. 🎤😄',
-    'Voy a sacar mi caja de risa. Dame un momento... cric cric cric ♫ja ja ja ja jaaaa♫',
-    'Meruane estaría orgulloso de ti. ¡Sigues haciendo reír! 😄',
-    'Jajajaja, ya llegó el payaso al grupo, avisa para la otra. 😄',
-    '♫♫♫♫ Yo tomo licor, yo tomo cerveza 🍻 Y me gustan las chicas y la cumbia me divierte y me excita.. ♫♫♫♫♫',
-    'A cantar: ♫♫♫ Yoooo tomo vino y cerveza 🍺 (Pisco y ron) para olvidarme de ella (Maraca culia), Tomo y me pongo loco (hasta los cocos), Loco de la cabeza (Esta cabeza) ♫♫♫',
-    '♫♫♫ Me fui pal baile y me emborraché,miré una chica y me enamoré,era tan bella, era tan bella,la quería comer ♫♫♫',
-    'Compa, ¿qué le parece esa morra?, La que anda bailando sola, me gusta pa mí, Bella, ella sabe que está buena , Que todos andan mirándola cómo baila ♫♫♫♫♫♫',
-    'jajajaja, ya empezaste con tus amariconadas 🏳️‍🌈',
-    '♫♫♫ Tú sabes como soy Me gusta ser así, Me gusta la mujer y le cervecita 🍻 No te sientas mal, no te vas a enojar Amigo nada más de la cervecita ♫♫♫♫♫',
-    '♫♫♫ Y dice.... No me quiero ir a dormir, quiero seguir bailando, quiero seguir tomando, 🍷 vino hasta morir, No me quiero ir a dormir, quiero seguir tomando 🍷 , Quiero seguir bailando, cumbia hasta morir♫♫♫',
-    '¿Bot? Te inyecto malware en tiempo real, wn.',
-    'Llámame bot otra vez y te hago un rootkit en el alma, qliao.',
-    '¿Bot? Te hago un SQL injection que ni te das cuenta, wn.',
-    'Sigue llamándome bot y te lanzo un ataque de fuerza bruta hasta en tus sueños, qliao.',
-    '¿Bot? Te corrompo todos tus datos y te dejo llorando, wn.',
-    'Bot tu madre. Te hago un exploit que te deja offline, qliao.',
-    '¿Bot? Te instalo un ransomware y te dejo en bancarrota, wn.',
-    'Vuelve a llamarme bot y te hago un man-in-the-middle en tu vida, qliao.',
-    'Llamarme bot es lo único que puedes hacer, con tus hacks de pacotilla, wn.',
-    'Una vez más me llamas bot y te meto en un loop de autenticación infinita, qliao.',
-    '¿Bot? Ctm, te hago un rm -rf / en los recuerdos y te reinicio de fábrica, gil.',
-    'Sigue weando y el próximo pantallazo azul va a tener mi firma, perkin.',
-    'Mi antivirus te tiene en la lista negra por ser terrible fome.',
-    'Te compilo la vida, pero con puros errores y warnings, pa que te cueste.',
-    'Me deci bot y te meto un DDoS al refri pa que se te eche a perder el pollo, wn.',
-    '¿Bot? Ojalá tu internet ande más lento que VTR en día de lluvia.',
-    'Ando con menos paciencia que el Chino Ríos en una conferencia.',
-    '¿Y vo creí que soy la Teletón? ¿Que te ayudo 24/7? No po, wn.',
-    'Estoy procesando... lo poco y na\' que me importa. Lol.',
-    'Wena, te ganaste el Copihue de Oro al comentario más inútil. ¡Un aplauso! 👏',
-    'Le poní más color que la Doctora Polo, wn.',
-    'Jajaja, qué chistoso. Me río en binario: 01101000 01100001 01101000 01100001.'
+    'Hola, ¿Qué necesitás?',
+    '¿Cómo te puedo ayudar?',
+    'Estoy acá para asistirte'
 ];
 let usedPhrases = [];
 
@@ -344,4 +300,4 @@ module.exports = {
     handleBotMention,
     handleOnce,
     addToMediaCache
-};
+};

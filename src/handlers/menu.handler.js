@@ -70,12 +70,7 @@ function getMainMenu() {
 📢 \`!todos\` → Mencionar a todos (solo admins)
 🆔 \`!id\` → ID del chat actual
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🎰 *RULETA Y PUNTOS*
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🎰 \`!ruleta\` → Girar ruleta de premios
-🏆 \`!puntos\` → Ver tus puntos
-🥇 \`!ranking\` → Top 10 jugadores`.trim();
+`.trim();
 }
 
 module.exports = {

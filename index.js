@@ -74,7 +74,6 @@ client.on('message_create', async (message) => {
     // Procesar mensajes (incluyendo los del bot para pruebas si empieza con !)
     incrementStats('message', message.from);
     
-    // Guardar mensaje en buffer para !recap
     if (!message.body.startsWith('!')) {
         try {
             const chat = await message.getChat();
@@ -125,5 +124,5 @@ process.on('SIGINT', async () => {
 client.initialize();
 
 setTimeout(() => {
-    console.log('\n💡 Recordatorio: Usa prefijo ! para comandos: !menu, !sonido, !horoscopo, etc.');
+    console.log('💡 Recordatorio: Usa prefijo ! para comandos: !menu, !clima, !metro, etc.');
 }, 3000);

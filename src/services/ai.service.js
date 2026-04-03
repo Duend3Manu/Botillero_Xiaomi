@@ -28,9 +28,9 @@ const commandList = `
 !clima [ciudad], !valores, !feriados, !far [comuna], !metro, !sismos, !bus [paradero], !sec, !secrm, !trstatus,
 !wiki [búsqueda], !g [búsqueda], !noticias, !pat [patente], !num [número], !tne [rut],
 !whois [dominio/ip], !nic [dominio.cl],
-!s, !toimg, !audios, !chiste, !horoscopo [signo], !18, !navidad, !añonuevo,
+!s, !toimg, !18, !navidad, !añonuevo,
 !tabla, !partidos, !prox, !tclasi, !clasi,
-!ping, !id, !ayuda [duda], !ticket, !caso, !menu
+!ping, !id, !ayuda [duda], !menu
 `;
 
 /**
