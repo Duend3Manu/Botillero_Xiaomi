@@ -1,72 +1,129 @@
+// index.js (VERSIÓN WHATSAPP)
 "use strict";
 
 require('dotenv').config();
-const { Client, LocalAuth } = require('whatsapp-web.js');
-const qrcode = require('qrcode-terminal');
-const commandHandler = require('./src/handlers/command.handler');
-const keywordHandler = require('./src/handlers/keyword.handler.js');
-const { adaptWhatsappMessage } = require('./src/platforms/whatsapp.adapter');
-const express = require('express');
 
-console.log("Iniciando Botillero v2.0 (Arquitectura Híbrida)...");
-
-// ESTE BLOQUE CONTIENE LA CONFIGURACIÓN FINAL Y CORRECTA
-const client = new Client({
-    authStrategy: new LocalAuth(),
-    puppeteer: {
-        headless: true,
-        args: [
-            '--no-sandbox',
-            '--disable-setuid-sandbox',
-            '--disable-dev-shm-usage',
-            '--disable-accelerated-2d-canvas',
-            '--no-first-run',
-            '--no-zygote',
-            '--disable-gpu',
-        ]
-    },
-    webVersionCache: {
-      type: 'remote',
-      remotePath: 'https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.2412.54.html'
-    }
+// --- Manejo de Errores Globales ---
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('❌ Unhandled Rejection en:', promise, 'razón:', reason);
 });
 
+process.on('uncaughtException', (error) => {
+    console.error('❌ Uncaught Exception:', error);
+});
+
+const { Client, LocalAuth } = require('whatsapp-web.js');
+const qrcode = require('qrcode-terminal');
+const { handleMessageCreate, handleMessageRevoke, handleMessageUpdate } = require('./src/handlers/events.handler');
+const commandHandler = require('./src/handlers/command.handler');
+const { incrementStats } = require('./src/handlers/system.handler');
+const messageBuffer = require('./src/services/message-buffer.service');
+const botConfig = require('./config/bot.config');
+
+console.log("🚀 Iniciando Botillero v2.0...");
+
+// --- CONFIGURACIÓN DEL CLIENTE ---
+const client = new Client({
+    authStrategy: new LocalAuth({
+        clientId: botConfig.authStrategy.clientId,
+        dataPath: botConfig.authStrategy.dataPath
+    }),
+    puppeteer: botConfig.puppeteer
+});
+
+// --- EVENTOS DE CONEXIÓN ---
 client.on('qr', qr => {
+    console.log('📱 QR listo para escanear:');
     qrcode.generate(qr, { small: true });
 });
 
 client.on('ready', () => {
-    console.log('¡Cliente de WhatsApp conectado y listo para la acción!');
+    console.log('✅ ¡Bot conectado y listo!');
+});
+
+client.on('auth_failure', msg => {
+    console.error('❌ Error de autenticación:', msg);
+});
+
+client.on('disconnected', (reason) => {
+    console.log('⚠️  Bot desconectado:', reason);
+    console.log('🔄 Intentando reconectar en 10 segundos...');
+    
+    setTimeout(() => {
+        console.log('🔄 Reiniciando cliente...');
+        client.initialize().catch(err => {
+            console.error('❌ Error al reconectar:', err);
+        });
+    }, 10000);
 });
 
 // --- MANEJADOR DE MENSAJES ---
-client.on('message', async (message) => {
+client.on('message_create', async (message) => {
+    const startTime = Date.now();
+    
+    if (!message.body) return;
+
+    // Evitar auto-respuestas infinitas a frases normales, pero permitir probar comandos (!)
+    if (message.fromMe && !message.body.startsWith('!')) return;
+
+    // Ejecutar handleMessageCreate para logging/analytics
+    handleMessageCreate(client, message).catch(err => {
+        console.error('Error en handleMessageCreate:', err.message);
+    });
+    
+    // Procesar mensajes (incluyendo los del bot para pruebas si empieza con !)
+    incrementStats('message', message.from);
+    
+    // Guardar mensaje en buffer para !recap
+    if (!message.body.startsWith('!')) {
+        try {
+            const chat = await message.getChat();
+            if (chat.isGroup) {
+                const contact = await message.getContact();
+                messageBuffer.addMessage(message.from, {
+                    user: contact.pushname || contact.name || contact.number || 'Usuario',
+                    userId: message.author || message.from,
+                    message: message.body,
+                    timestamp: message.timestamp * 1000
+                });
+            }
+        } catch (e) {}
+    }
+    
+    // Procesar comandos y frases (Ester eggs, etc.)
     try {
-        await keywordHandler(message);
+        if (message.body.startsWith('!')) {
+            incrementStats('command', message.from);
+        }
         await commandHandler(client, message);
     } catch (error) {
-        console.error("Error al procesar el mensaje de WhatsApp:", error);
+        console.error(`❌ Error procesando mensaje:`, error.message);
+    }
+    
+    const processingTime = Date.now() - startTime;
+    if (message.body.startsWith('!')) {
+        console.log(`⏱️  Comando procesado en ${processingTime}ms`);
     }
 });
 
-// --- SERVIDOR DE NOTIFICACIONES (Sin cambios) ---
-const app = express();
-app.use(express.json());
-const NOTIFICATION_PORT = process.env.PORT || 3001;
-const GROUP_ID = process.env.GROUP_ID || 'TU_GROUP_ID@g.us'; 
+client.on('message_revoke_everyone', (after, before) => handleMessageRevoke(client, after, before));
+client.on('message_update', message => handleMessageUpdate(client, message));
 
-app.post('/send-notification', (req, res) => {
-    const message = req.body.message;
-    if (message) {
-        client.sendMessage(GROUP_ID, message);
-        res.status(200).send({ status: 'ok', message: 'Notificación enviada.' });
-    } else {
-        res.status(400).send({ status: 'error', message: 'No se recibió mensaje.' });
+// --- CIERRE ELEGANTE ---
+process.on('SIGINT', async () => {
+    console.log('\n🛑 Cerrando bot...');
+    try {
+        await client.destroy();
+        console.log('✅ Cliente cerrado correctamente.');
+    } catch (e) {
+        console.error('❌ Error al cerrar cliente:', e);
     }
+    process.exit(0);
 });
 
-app.listen(NOTIFICATION_PORT, () => {
-    console.log(`(API) -> Servidor de notificaciones escuchando en el puerto ${NOTIFICATION_PORT}`);
-});
-
+// --- INICIAR CLIENTE ---
 client.initialize();
+
+setTimeout(() => {
+    console.log('\n💡 Recordatorio: Usa prefijo ! para comandos: !menu, !sonido, !horoscopo, etc.');
+}, 3000);

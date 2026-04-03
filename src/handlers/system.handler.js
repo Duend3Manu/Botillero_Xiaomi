@@ -7,20 +7,9 @@ const axios = require('axios');
 const ping = require('ping');
 const packageInfo = require('../../package.json');
 
-// --- Contadores globales de estadísticas del bot ---
-const BOT_STATS = {
-    messagesProcessed: 0,
-    commandsExecuted: 0,
-    uniqueUsers: new Set(),
-    startTime: Date.now()
-};
+// --- Tiempo de inicio del bot ---
+const BOT_START_TIME = Date.now();
 
-// Función para incrementar contadores (exportada para uso en otros módulos)
-function incrementStats(type, userId = null) {
-    if (type === 'message') BOT_STATS.messagesProcessed++;
-    if (type === 'command') BOT_STATS.commandsExecuted++;
-    if (userId) BOT_STATS.uniqueUsers.add(userId);
-}
 
 // --- Funciones auxiliares para obtener métricas del sistema ---
 
@@ -280,7 +269,7 @@ async function handlePing(message) {
     // (removido messageLag del código, usaremos waLatency)
 
     const systemUptime = formatUptime(os.uptime());
-    const botUptime = formatUptime((Date.now() - BOT_STATS.startTime) / 1000);
+    const botUptime = formatUptime((Date.now() - BOT_START_TIME) / 1000);
     const nodeVersion = process.version;
     const botVersion = packageInfo.version;
 
@@ -330,9 +319,6 @@ async function handlePing(message) {
 🏓 Ping Google: ${pingTime ? (pingTime / 1000).toFixed(3) + ' s' : 'N/A'}
 ⏳ Latencia WA: ${(waLatency / 1000).toFixed(3)} s
 ⏱️ Tiempo ejec.: ${(executeLag / 1000).toFixed(3)} s
-📊 Mensajes: ${BOT_STATS.messagesProcessed}
-⚡ Comandos: ${BOT_STATS.commandsExecuted}
-👥 Usuarios: ${BOT_STATS.uniqueUsers.size}
 🕐 Uptime Bot: ${botUptime}
 🟢 Node: ${nodeVersion}
 🔧 Versión: v${botVersion}
@@ -342,4 +328,4 @@ async function handlePing(message) {
     return response;
 }
 
-module.exports = { handlePing, incrementStats };
+module.exports = { handlePing };

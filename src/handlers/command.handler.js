@@ -5,13 +5,15 @@ const { MessageMedia } = require('../adapters/wwebjs-adapter');
 const rateLimiter = require('../services/rate-limiter.service');
 const { handleReaction } = require('../services/messaging.service');
 
+const botConfig = require('../../config/bot.config');
+
 // --- Lazy Loading de Servicios ---
 // Los servicios solo se cargan cuando realmente se necesitan
 const services = {
     get metro() { return require('../services/metro.service'); },
     get nationalTeam() { return require('../services/nationalTeam.service'); },
     get economy() { return require('../services/economy.service'); },
-    get horoscope() { return require('../services/horoscope.service'); },
+
     get league() { return require('../services/league.service.js'); },
     get transbank() { return require('../services/transbank.service.js'); },
     get system() { return require('./system.handler'); },
@@ -34,21 +36,6 @@ let lastTransbankRequestTimestamp = 0;
 const TRANSBANK_COOLDOWN_SECONDS = 30;
 
 // --- Helpers para comandos con lógica repetida ---
-async function handleHoroscopeCommand(client, message, serviceMethod) {
-    const signo = message.body.split(' ')[1];
-    if (!signo) {
-        return "Por favor, escribe un signo. Ej: `!horoscopo aries`";
-    }
-    
-    const result = await serviceMethod(signo);
-    await message.reply(result.text);
-    
-    if (result.imagePath) {
-        const media = MessageMedia.fromFilePath(result.imagePath);
-        await client.sendMessage(message.from, media);
-    }
-    return null; // Ya enviamos la respuesta
-}
 
 async function handleTransbankWithCooldown() {
     const now = Date.now();
@@ -115,11 +102,15 @@ const commandAliases = {
     'ligapartidos': 'prox',
     'selecciontabla': 'tclasi',
     'seleccionpartidos': 'clasi',
+    'ecaso': 'caso',
+    'icaso': 'caso',
     'tel': 'num',
     'patente': 'pat',
     'net': 'whois',
     'comandos': 'menu',
     'secrm': 'sec',
+    'dato': 'random',
+    'curiosidad': 'random',
     'pase': 'tne',
     'precio': 'oferta',
     'desc': 'oferta',
@@ -129,13 +120,26 @@ const commandAliases = {
 // --- Command Map (Reemplaza el switch gigante) ---
 const commandMap = {
     // Liga/Deportes
-    'tabla': () => services.league.getLeagueTable(),
+    'tabla': async (client, msg) => {
+        await msg.reply('📊 Buscando la tabla de posiciones en la ANFP, dame un segundo...');
+        return services.league.getCopaLigaGroups();
+    },
+    'grupos': async (client, msg) => {
+        await msg.reply('📊 Buscando la tabla de posiciones en la ANFP, dame un segundo...');
+        return services.league.getCopaLigaGroups();
+    },
     'prox': () => services.league.getLeagueUpcomingMatches(),
     'partidos': () => services.league.getMatchDaySummary(),
     'tclasi': () => services.nationalTeam.getQualifiersTable(),
     'clasi': () => services.nationalTeam.getQualifiersMatches(),
-    'liga': () => services.league.getCopaLigaMatches(),
-    'cliga': () => services.league.getCopaLigaGroups(),
+    'liga': async (client, msg) => {
+        await msg.reply('⚽ Consultando el VAR de la Copa de la Liga, dame un segundito...');
+        return services.league.getCopaLigaMatches();
+    },
+    'cliga': async (client, msg) => {
+        await msg.reply('📊 Buscando la tabla de posiciones en la ANFP, dame un segundo...');
+        return services.league.getCopaLigaGroups();
+    },
     
     // Servicios públicos
     'metro': () => services.metro.getMetroStatus(),
@@ -153,12 +157,8 @@ const commandMap = {
     'bus': (client, msg) => services.utility.handleBus(msg, client),
     'sec': (_, msg) => services.utility.handleSec(msg),
     'menu': async (_, msg) => {
-        const { getMainMenuKeyboard } = require('./menu.handler');
-        await msg.reply('🤖 *Menú Principal — Botillero*\n\nSelecciona una categoría:', undefined, {
-            parse_mode: 'Markdown',
-            reply_markup: getMainMenuKeyboard()
-        });
-        return null; // Ya enviamos el mensaje directamente, no retornar texto
+        const { getMainMenu } = require('./menu.handler');
+        return getMainMenu();
     },
     
     // Búsquedas
@@ -166,11 +166,19 @@ const commandMap = {
     'noticias': (_, msg) => services.search.handleNews(msg),
     'g': (_, msg) => services.search.handleGoogleSearch(msg),
     'oferta': (_, msg) => services.search.handleDealsSearch(msg),
+    'streaming': (_, msg) => services.utility.handleStreaming(msg),
     'pat': (_, msg) => services.personalSearch.handlePatenteSearch(msg),
     
     // Diversión
     's': (client, msg) => services.fun.handleSticker(client, msg),
+    'random': (client, msg) => handleRandomCommand(client, msg),
     'toimg': (client, msg) => handleStickerToImage(client, msg),
+    
+    // Casos (registro interno)
+    'caso': (_, msg) => services.stateful.handleCaso(msg),
+    
+    // IA
+    'ayuda': (_, msg) => services.ai.handleAiHelp(msg),
     
     // Búsquedas personales
     'num': (client, msg) => services.personalSearch.handlePhoneSearch(client, msg),
@@ -211,8 +219,6 @@ const validCommands = new Set([
 ]);
 
 // --- Regex Pre-compilada ---
-// IMPORTANTE: Usamos ^ para que solo matchee al INICIO del mensaje.
-// Esto evita falsos positivos con URLs que contengan palabras como /noticias, /tabla, etc.
 const commandRegex = new RegExp(
     `^\\s*([!/])(${[...validCommands].sort((a, b) => b.length - a.length).join('|')})\\b`, 
     'i'
@@ -225,14 +231,18 @@ async function commandHandler(client, message) {
     // Detectar comando usando regex optimizada (solo al inicio del mensaje)
     let command = null;
     const match = body.match(commandRegex);
-    
+
     if (match) {
         command = match[2].toLowerCase();
     }
 
-    // Easter eggs (menciones al bot)
+    // Easter eggs (menciones al bot) — respeta mentionTriggers: false en config
     if (!command) {
         const lowerBody = body.toLowerCase();
+        const mentionEnabled = botConfig.mentionTriggers !== false;
+        if (mentionEnabled && /\b(bot|boot|bott|bbot)\b/.test(lowerBody)) {
+            return services.fun.handleBotMention(client, message);
+        }
         if (/\b(once|onse|11)\b/.test(lowerBody)) {
             return services.fun.handleOnce(client, message);
         }
@@ -245,7 +255,6 @@ async function commandHandler(client, message) {
         return message.reply(replyMessage);
     }
 
-    // Resolver alias
     const resolvedCommand = commandAliases[command] || command;
 
     try {
@@ -263,7 +272,6 @@ async function commandHandler(client, message) {
             
             // Solo hacer reply si el handler retornó un STRING.
             // Si retornó null/undefined → ya envió el mensaje directamente.
-            // Si retornó un objeto (Message de Telegram) → también ya lo envió, ignorar.
             if (replyMessage && typeof replyMessage === 'string') {
                 await message.reply(replyMessage);
             }

@@ -259,63 +259,7 @@ async function handleBancos(message) {
     return await getBanksStatus();
 }
 
-// --- Lógica para !recap (Resumen de conversación) ---
-async function handleRecap(message) {
-    const { generateConversationSummary } = require('../services/ai.service');
-    const messageBuffer = require('../services/message-buffer.service');
-    const rateLimiter = require('../services/rate-limiter.service');
-    
-    try {
-        const groupId = message.from;
-        
-        // Verificar que sea grupo
-        const chat = await message.getChat();
-        if (!chat.isGroup) {
-            return '⚠️ Este comando solo funciona en grupos';
-        }
-        
-        // Obtener mensajes del buffer
-        const messages = messageBuffer.getMessages(groupId);
-        
-        if (messages.length < 5) {
-            return `⚠️ Necesito al menos 5 mensajes para hacer un resumen. Por ahora solo tengo ${messages.length}.`;
-        }
-        
-        // Verificar rate limit de Gemini
-        const limit = rateLimiter.tryAcquire();
-        if (!limit.success) {
-            await message.react('⏳');
-            return rateLimiter.getCooldownMessage(limit.timeLeft);
-        }
-        
-        await message.react('🤖');
-        
-        // Generar resumen con IA
-        const summary = await generateConversationSummary(messages);
-        
-        await message.react('✅');
-        
-        // Extraer IDs únicos de usuarios mencionados en los mensajes
-        const uniqueUserIds = [...new Set(messages.map(m => m.userId).filter(Boolean))];
-        
-        const recapMessage = `📝 *Resumen de los últimos ${messages.length} mensajes:*\n\n${summary}\n\n_Generado por Gemini 2.5 Flash_`;
-        
-        // Enviar con menciones si hay usuarios
-        if (uniqueUserIds.length > 0) {
-            await message.reply(recapMessage, undefined, {
-                mentions: uniqueUserIds
-            });
-            return; // No retornar string, ya enviamos el mensaje
-        } else {
-            return recapMessage;
-        }
-        
-    } catch (error) {
-        console.error('Error en handleRecap:', error);
-        await message.react('❌');
-        return '❌ Hubo un error al generar el resumen. Intenta de nuevo.';
-    }
-}
+
 
 // --- Lógica para !menu (ACTUALIZADO) ---
 function handleMenu() {
@@ -337,7 +281,7 @@ function handleMenu() {
 ⚡ \`!sec\` / \`!secrm\` → Cortes de luz (nacional/RM)
 💳 \`!transbank\` → Estado servicios Transbank
 🏦 \`!bancos\` → Estado sitios web bancarios
-📝 \`!recap\` → Resumir últimos mensajes del grupo
+
 🔧 \`!ping\` → Estado del sistema/bot
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -404,6 +348,5 @@ module.exports = {
     handleMenu,
     handleRandom,
     handleBancos,
-    handleRecap,
     handleStreaming
 };

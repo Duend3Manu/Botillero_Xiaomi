@@ -5,7 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const moment = require('moment-timezone');
 const ffmpeg = require('fluent-ffmpeg');
-const { MessageMedia } = require('../adapters/wwebjs-adapter'); // → TelegramMedia via adaptador
+const { MessageMedia } = require('whatsapp-web.js');
 
 // --- Sistema de Caché de Medias ---
 const mediaCache = [];
@@ -185,31 +185,8 @@ async function handleSticker(client, message) {
         }
 
         const webpMedia = MessageMedia.fromFilePath(outputFilePath);
-        const { saveStickerSession, getStickerPackKeyboard } = require('./sticker-pack.handler');
-
-        // Enviar como sticker y capturar el mensaje enviado para obtener el file_id
-        let sentMsg = null;
-        if (typeof message.sendSticker === 'function') {
-            sentMsg = await message.sendSticker(webpMedia);
-        } else {
-            await message.reply(webpMedia);
-        }
-
-        // Si obtuvimos el file_id del sticker enviado, ofrecer añadir al pack
-        const fileId = sentMsg?.sticker?.file_id;
-        const userId = message.author || message.from;
-
-        if (fileId && userId) {
-            saveStickerSession(userId, fileId);
-            // Enviar mensaje de seguimiento con botón inline
-            await message.reply(
-                '📦 *¿Agregar este sticker al pack de Botillero?*',
-                undefined,
-                { reply_markup: getStickerPackKeyboard(userId) }
-            );
-        }
-
-        // Reacción de éxito
+        await message.reply(webpMedia, undefined, { sendMediaAsSticker: true });
+        
         try { await message.react('✅'); } catch (e) {}
 
         // Limpieza
@@ -222,118 +199,6 @@ async function handleSticker(client, message) {
         console.error('(Sticker) -> Error:', err);
         try { await message.react('❌'); } catch (e) {}
         message.reply('❌ Error al crear sticker. Intenta con una imagen, GIF o video más corto.');
-    }
-}
-
-// --- Lógica para Sonidos ---
-const soundMap = {
-    'mataron': { file: 'mataron.mp3', reaction: '😂' }, 'muerte': { file: 'muerte.mp3', reaction: '😂' },
-    'muerte2': { file: 'muerte2.mp3', reaction: '😂' }, 'muerte3': { file: 'muerte3.mp3', reaction: '😂' },
-    'muerte4': { file: 'muerte4.mp3', reaction: '😂' }, 'neme': { file: 'neme.mp3', reaction: '🏳️‍🌈' },
-    'risa': { file: 'merio.mp3', reaction: '😂' }, 'watona': { file: 'watona.mp3', reaction: '😂' },
-    'himno': { file: 'urss.mp3', reaction: '🇷🇺' }, 'aweonao': { file: 'aweonao.mp3', reaction: '😂' },
-    'mpenca': { file: 'muypenca.mp3', reaction: '😂' }, 'penca': { file: 'penca.mp3', reaction: '😂' },
-    'yamete': { file: 'Yamete.mp3', reaction: '😂' }, 'doler': { file: 'doler.mp3', reaction: '😂' },
-    'dolor': { file: 'doler.mp3', reaction: '🏳️‍🌈' }, 'tigre': { file: 'Tigre.mp3', reaction: '🐯' },
-    'promo': { file: 'Promo.mp3', reaction: '😂' }, 'rata': { file: 'Rata.mp3', reaction: '🐁' },
-    'rata2': { file: 'rata2.mp3', reaction: '🐁' }, 'caballo': { file: 'caballo.mp3', reaction: '🏳️‍🌈' },
-    'romeo': { file: 'romeo.mp3', reaction: '😂' }, 'idea': { file: 'idea.mp3', reaction: '😂' },
-    'chamba': { file: 'chamba.mp3', reaction: '😂' }, 'where': { file: 'where.mp3', reaction: '😂' },
-    'shesaid': { file: 'shesaid.mp3', reaction: '😂' }, 'viernes': { file: 'viernes.mp3', reaction: '😂' },
-    'lunes': { file: 'lunes.mp3', reaction: '😂' }, 'yque': { file: 'yqm.mp3', reaction: '😂' },
-    'rico': { file: 'rico.mp3', reaction: '😂' }, '11': { file: '11.mp3', reaction: '😂' },
-    'callate': { file: 'callate.mp3', reaction: '😂' }, 'callense': { file: 'callense.mp3', reaction: '😂' },
-    'cell': { file: 'cell.mp3', reaction: '😂' }, 'chaoctm': { file: 'chaoctm.mp3', reaction: '😂' },
-    'chipi': { file: 'chipi.mp3', reaction: '😂' }, 'aonde': { file: 'donde.mp3', reaction: '😂' },
-    'grillo': { file: 'grillo.mp3', reaction: '😂' }, 'material': { file: 'material.mp3', reaction: '😂' },
-    'miguel': { file: 'miguel.mp3', reaction: '😂' }, 'miraesawea': { file: 'miraesawea.mp3', reaction: '😂' },
-    'nohayplata': { file: 'nohayplata.mp3', reaction: '😂' }, 'oniichan': { file: 'onishan.mp3', reaction: '😂' },
-    'pago': { file: 'pago.mp3', reaction: '😂' }, 'pedro': { file: 'pedro.mp3', reaction: '😂' },
-    'protegeme': { file: 'protegeme.mp3', reaction: '😂' }, 'queeseso': { file: 'queeseso.mp3', reaction: '😂' },
-    'chistoso': { file: 'risakeso.mp3', reaction: '😂' }, 'marcho': { file: 'semarcho.mp3', reaction: '😂' },
-    'spiderman': { file: 'spiderman.mp3', reaction: '😂' }, 'suceso': { file: 'suceso.mp3', reaction: '😂' },
-    'tpillamos': { file: 'tepillamos.mp3', reaction: '😂' }, 'tranquilo': { file: 'tranquilo.mp3', reaction: '😂' },
-    'vamosc': { file: 'vamoschilenos.mp3', reaction: '😂' }, 'voluntad': { file: 'voluntad.mp3', reaction: '😂' },
-    'wenak': { file: 'wenacabros.mp3', reaction: '😂' }, 'whisper': { file: 'whisper.mp3', reaction: '😂' },
-    'whololo': { file: 'whololo.mp3', reaction: '😂' }, 'noinsultes': { file: 'noinsultes.mp3', reaction: '😂' },
-    'falso': { file: 'falso.mp3', reaction: '😂' }, 'frio': { file: 'frio.mp3', reaction: '😂' },
-    'yfuera': { file: 'yfuera.mp3', reaction: '😂' }, 'nocreo': { file: 'nocreo.mp3', reaction: '😂' },
-    'yabasta': { file: 'BUENO BASTA.mp3', reaction: '😂' }, 'quepaso': { file: 'quepaso.mp3', reaction: '😂' },
-    'nada': { file: 'nada.mp3', reaction: '😂' }, 'idea2': { file: 'idea2.mp3', reaction: '😂' },
-    'papito': { file: 'papito.mp3', reaction: '😂' }, 'jose': { file: 'jose.mp3', reaction: '😂' },
-    'ctm': { file: 'ctm.mp3', reaction: '😂' }, 'precio': { file: 'precio.mp3', reaction: '😂' },
-    'hermosilla': { file: 'Hermosilla.mp3', reaction: '😂' }, 'marino': { file: 'marino.mp3', reaction: '😂' },
-    'manualdeuso': { file: 'manualdeuso.mp3', reaction: '😂' }, 'estoy': { file: 'estoy.mp3', reaction: '😂' },
-    'pela': { file: 'pela.mp3', reaction: '😂' }, 'chao': { file: 'chao.mp3', reaction: '😂' },
-    'aurora': { file: 'aurora.mp3', reaction: '😂' }, 'rivera': { file: 'Rivera.mp3', reaction: '😂' },
-    'tomar': { file: 'Tomar.mp3', reaction: '😂' }, 'macabeo': { file: 'Macabeo.mp3', reaction: '😂' },
-    'piscola': { file: 'Piscola.mp3', reaction: '😂' }, 'tomar2': { file: 'Notomar.mp3', reaction: '😂' },
-    'venganza': { file: 'Venganza.mp3', reaction: '😂' }, 'weko': { file: 'weko.mp3', reaction: '🏳️‍🌈' },
-    'himnoe': { file: 'urssespañol.mp3', reaction: '🇷🇺' } ,  'onichan': { file: 'onishan.mp3', reaction: '😂' }
-};
-
-const soundList = Object.keys(soundMap);
-
-function handleAudioList() {
-    const header = "🎵 **Comandos de Audio Disponibles** 🎵\n\n";
-    const commandList = soundList.map(cmd => `!${cmd}`).join('\n');
-    return header + commandList;
-}
-
-async function handleSound(client, message, command) {
-    const soundInfo = soundMap[command];
-    if (!soundInfo) return;
-
-    const audioPath = path.join(__dirname, '..', '..', 'mp3', soundInfo.file);
-
-    try {
-        // Verificar existencia de forma asíncrona (no bloqueante)
-        await fs.promises.access(audioPath);
-
-        // Intentar reaccionar, pero ignorar si falla
-        try {
-            await new Promise(resolve => setTimeout(resolve, 500)); // Pausa de 0.5s
-            await message.react(soundInfo.reaction);
-        } catch (reactionError) {
-            // Ignoramos el error cosmético
-        }
-        const media = MessageMedia.fromFilePath(audioPath);
-        // message.reply detecta que es audio por el mimetype y llama sendAudio en Telegram
-        await message.reply(media);
-    } catch (error) {
-        if (error.code === 'ENOENT') {
-            message.reply(`No se encontró el archivo de audio para "!${command}".`);
-            console.error(`Archivo no encontrado: ${audioPath}`);
-        } else {
-            console.error(`Error en handleSound:`, error);
-        }
-    }
-}
-
-function getSoundCommands() {
-    return soundList;
-}
-
-async function handleJoke(client, message) {
-    const folderPath = path.join(__dirname, '..', '..', 'chistes');
-    
-    try {
-        // Leer directorio de forma asíncrona
-        const files = await fs.promises.readdir(folderPath);
-        
-        if (files.length === 0) return message.reply("No hay chistes para contar.");
-        
-        const randomIndex = Math.floor(Math.random() * files.length);
-        const audioPath = path.join(folderPath, files[randomIndex]);
-        
-        const media = MessageMedia.fromFilePath(audioPath);
-        // message.reply detecta que es audio y llama sendAudio en Telegram
-        await message.reply(media);
-    } catch (error) {
-        if (error.code === 'ENOENT') {
-            return message.reply("La carpeta de chistes no está configurada.");
-        }
-        console.error("Error en handleJoke:", error);
     }
 }
 
@@ -475,12 +340,8 @@ async function handleOnce(client, message) {
 
 module.exports = {
     handleSticker,
-    handleSound,
-    getSoundCommands,
-    handleAudioList,
-    handleJoke,
     handleCountdown,
     handleBotMention,
     handleOnce,
     addToMediaCache
-};
+};
