@@ -1,0 +1,4 @@
+{
+  "comment": "Edita manualmente los aliases aquí. Formato: 'numero_whatsapp': 'nickname'",
+  "comment_example": "Ejemplo: '5634354354': 'Huaso' - Luego en el chat escribe 'Huaso' y el bot lo etiquetará"
+}

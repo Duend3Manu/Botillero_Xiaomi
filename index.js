@@ -16,6 +16,7 @@ const { Client, LocalAuth } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
 const { handleMessageCreate, handleMessageRevoke, handleMessageUpdate } = require('./src/handlers/events.handler');
 const commandHandler = require('./src/handlers/command.handler');
+const aliasService = require('./src/services/alias.service');
 const { incrementStats } = require('./src/handlers/system.handler');
 const messageBuffer = require('./src/services/message-buffer.service');
 const botConfig = require('./config/bot.config');
@@ -85,6 +86,29 @@ client.on('message_create', async (message) => {
                     message: message.body,
                     timestamp: message.timestamp * 1000
                 });
+                
+                // Detectar y etiquetar menciones de aliases
+                try {
+                    const mentionResult = aliasService.processMentionsInMessage(message.body);
+                    if (mentionResult.hasMatches && mentionResult.mentions.length > 0) {
+                        console.log(`(Aliases) -> Menciones detectadas en grupo: ${mentionResult.foundAliases.map(a => a.alias).join(', ')}`);
+                        
+                        // Preparar lista de menciones con formato
+                        const mentionList = mentionResult.foundAliases
+                            .map(a => `@${a.alias}`)
+                            .join(', ');
+                        
+                        // Respuesta del bot detectando la mención
+                        const replyText = `✓ Detecté mención a: ${mentionList}`;
+                        
+                        // Enviar mención
+                        await message.reply(replyText, undefined, {
+                            mentions: mentionResult.mentions.map(phone => `${phone}@s.whatsapp.net`)
+                        });
+                    }
+                } catch (aliasErr) {
+                    console.error('(Aliases) -> Error al procesar menciones:', aliasErr.message);
+                }
             }
         } catch (e) {}
     }
